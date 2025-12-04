@@ -1,0 +1,16 @@
+[workspace]
+resolver = "3"
+
+members = [
+    # Core bounded context
+    "bounded/core",
+
+    # Auhentication context
+    "bounded/auth",
+
+    # Backend API expose
+    "cmd/api",
+
+    # Frontend using Leptos
+    "cmd/site",
+]
