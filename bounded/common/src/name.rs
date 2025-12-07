@@ -3,6 +3,9 @@ use std::fmt;
 use std::ops::Deref;
 use thiserror::Error;
 
+const MAX_LENGTH: usize = 101;
+const MIN_LENGTH: usize = 2;
+
 /// Error type for `Name` validation failures.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -20,8 +23,8 @@ pub enum NameError {
 /// use education_platform_common::NameConfig;
 ///
 /// let config = NameConfig::default();
-/// assert_eq!(config.min_length(), 1);
-/// assert_eq!(config.max_length(), 100);
+/// assert_eq!(config.min_length(), 2);
+/// assert_eq!(config.max_length(), 101);
 ///
 /// let custom = NameConfig::builder()
 ///     .min_length(2)
@@ -74,9 +77,9 @@ impl NameConfig {
 }
 
 impl Default for NameConfig {
-    /// Creates a default configuration with min_length=1 and max_length=100.
+    /// Creates a default configuration with min_length=2 and max_length=101.
     fn default() -> Self {
-        Self::new(1, 100)
+        Self::new(MIN_LENGTH, MAX_LENGTH)
     }
 }
 
@@ -92,8 +95,8 @@ impl NameConfigBuilder {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            min_length: 1,
-            max_length: 100,
+            min_length: MIN_LENGTH,
+            max_length: MAX_LENGTH,
         }
     }
 
@@ -138,7 +141,7 @@ impl Default for NameConfigBuilder {
 /// ```
 /// use education_platform_common::{Name, NameConfig};
 ///
-/// // Using the default configuration (1-100 characters)
+/// // Using the default configuration (2-101 characters)
 /// let name = Name::new("John".to_string()).unwrap();
 /// assert_eq!(name.as_str(), "John");
 ///
@@ -158,8 +161,9 @@ impl Name {
     ///
     /// The name will be trimmed and validated to:
     /// - Not be empty after trimming
-    /// - Have length >= 1 character
-    /// - Have length <= 100 characters
+    /// - Have length >= 2 characters
+    /// - Have length <= 101 characters
+    /// - Contain only valid Latin characters (letters, spaces, hyphens, apostrophes)
     ///
     /// # Errors
     ///
@@ -210,6 +214,7 @@ impl Name {
         Validator::is_not_empty(trimmed)?;
         Validator::is_greater_than(trimmed, config.min_length)?;
         Validator::is_less_than(trimmed, config.max_length)?;
+        Validator::is_valid_latin_name(trimmed)?;
 
         Ok(Self {
             inner: trimmed.to_string(),
@@ -323,8 +328,8 @@ mod tests {
     #[test]
     fn test_name_config_default() {
         let config = NameConfig::default();
-        assert_eq!(config.min_length(), 1);
-        assert_eq!(config.max_length(), 100);
+        assert_eq!(config.min_length(), 2);
+        assert_eq!(config.max_length(), 101);
     }
 
     #[test]
@@ -377,21 +382,79 @@ mod tests {
 
     #[test]
     fn test_name_at_min_boundary() {
-        let name = Name::new("J".to_string()).unwrap();
-        assert_eq!(name.as_str(), "J");
+        let name = Name::new("Jo".to_string()).unwrap();
+        assert_eq!(name.as_str(), "Jo");
     }
 
     #[test]
     fn test_name_at_max_boundary() {
-        let long_name = "a".repeat(100);
+        let long_name = "a".repeat(101);
         let name = Name::new(long_name.clone()).unwrap();
         assert_eq!(name.as_str(), &long_name);
     }
 
     #[test]
     fn test_name_exceeds_max_boundary_returns_error() {
-        let too_long = "a".repeat(101);
+        let too_long = "a".repeat(102);
         let result = Name::new(too_long);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_name_with_spanish_characters_returns_ok() {
+        assert!(Name::new("José".to_string()).is_ok());
+        assert!(Name::new("María".to_string()).is_ok());
+        assert!(Name::new("Ángel".to_string()).is_ok());
+        assert!(Name::new("Nuñez".to_string()).is_ok());
+        assert!(Name::new("García".to_string()).is_ok());
+        assert!(Name::new("Rodríguez".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_name_with_portuguese_characters_returns_ok() {
+        assert!(Name::new("João".to_string()).is_ok());
+        assert!(Name::new("António".to_string()).is_ok());
+        assert!(Name::new("Conceição".to_string()).is_ok());
+        assert!(Name::new("José".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_name_with_hyphen_returns_ok() {
+        assert!(Name::new("Mary-Jane".to_string()).is_ok());
+        assert!(Name::new("María-José".to_string()).is_ok());
+        assert!(Name::new("Jean-Pierre".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_name_with_apostrophe_returns_ok() {
+        assert!(Name::new("O'Brien".to_string()).is_ok());
+        assert!(Name::new("D'Angelo".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_name_with_numbers_returns_error() {
+        assert!(Name::new("John123".to_string()).is_err());
+        assert!(Name::new("María2".to_string()).is_err());
+        assert!(Name::new("Test123Name".to_string()).is_err());
+        assert!(Name::new("1John".to_string()).is_err());
+    }
+
+    #[test]
+    fn test_name_with_special_characters_returns_error() {
+        assert!(Name::new("John@Doe".to_string()).is_err());
+        assert!(Name::new("Test$Name".to_string()).is_err());
+        assert!(Name::new("Name!".to_string()).is_err());
+        assert!(Name::new("José#García".to_string()).is_err());
+        assert!(Name::new("Test.Name".to_string()).is_err());
+        assert!(Name::new("Name_Test".to_string()).is_err());
+        assert!(Name::new("Test&Name".to_string()).is_err());
+        assert!(Name::new("Name%Test".to_string()).is_err());
+    }
+
+    #[test]
+    fn test_name_with_multiple_words_returns_ok() {
+        assert!(Name::new("Mary Jane".to_string()).is_ok());
+        assert!(Name::new("María García".to_string()).is_ok());
+        assert!(Name::new("Anne Marie".to_string()).is_ok());
     }
 }
