@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "post-tool-use": [
+      {
+        "tool": "write-file",
+        "glob": "**/*.rs",
+        "command": "cargo fmt 2>/dev/null || true"
+      },
+      {
+        "tool": "write-file",
+        "glob": "bounded/**/*.rs",
+        "command": "cargo check --quiet 2>&1 | head -20 || true"
+      }
+    ],
+    "pre-tool-use": [
+      {
+        "tool": "write-file",
+        "glob": "**/*.rs",
+        "command": "echo 'Checking for unwrap/expect usage...' && (grep -q '\\.unwrap()\\|\\.expect(' \"$FILE\" 2>/dev/null && ! grep -B5 -A5 '#\\[cfg(test)\\]' \"$FILE\" | grep -q '\\.unwrap()\\|\\.expect(' && echo 'WARNING: Found unwrap/expect outside test code. Consider using Result<T,E> instead.' || true) || true"
+      }
+    ]
+  },
+  "environment-variables": {
+    "RUST_BACKTRACE": "1",
+    "RUST_LOG": "info"
+  }
+}
