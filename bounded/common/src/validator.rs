@@ -2,16 +2,22 @@ use regex::Regex;
 use std::sync::LazyLock;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum ValidatorError {
     #[error("Invalid regex pattern: {0}")]
-    RegexError(#[from] regex::Error),
+    RegexError(String),
 
     #[error("email format not valid")]
     NotValidEmail,
 
     #[error("name cannot be empty")]
     EmptyName,
+
+    #[error("value must be greater than {min}")]
+    GreaterThan { min: usize },
+
+    #[error("value must be less than {max}")]
+    LessThan { max: usize },
 }
 
 static EMAIL_REGEX: LazyLock<Result<Regex, regex::Error>> =
@@ -23,7 +29,7 @@ impl Validator {
     pub fn is_valid_email(email: &str) -> Result<(), ValidatorError> {
         let regex = EMAIL_REGEX
             .as_ref()
-            .map_err(|e| ValidatorError::RegexError(e.clone()))?;
+            .map_err(|e| ValidatorError::RegexError(e.to_string()))?;
 
         if !regex.is_match(email) {
             return Err(ValidatorError::NotValidEmail);
@@ -35,6 +41,22 @@ impl Validator {
     pub fn is_not_empty(v: &str) -> Result<(), ValidatorError> {
         if v.trim().is_empty() {
             return Err(ValidatorError::EmptyName);
+        }
+
+        Ok(())
+    }
+
+    pub fn is_greater_than(v: &str, min: usize) -> Result<(), ValidatorError> {
+        if v.len() < min {
+            return Err(ValidatorError::GreaterThan { min });
+        }
+
+        Ok(())
+    }
+
+    pub fn is_less_than(v: &str, max: usize) -> Result<(), ValidatorError> {
+        if v.len() > max {
+            return Err(ValidatorError::LessThan { max });
         }
 
         Ok(())

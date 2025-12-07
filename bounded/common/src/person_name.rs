@@ -1,16 +1,34 @@
 use crate::{Validator, ValidatorError};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+/// Error type for `PersonName` validation failures.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PersonNameError {
-    #[error("Invalid regex pattern: {0}")]
+    /// Validation error occurred during name validation.
+    #[error("Name validation failed: {0}")]
     ValidationError(#[from] ValidatorError),
 }
 
 /// Represents a person's name with first, optional middle, and last name components.
 ///
 /// All name components are validated to be non-empty and are automatically trimmed.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Name length must be between 1 and 100 characters (inclusive) after trimming.
+///
+/// # Examples
+///
+/// ```
+/// use education_platform_common::PersonName;
+///
+/// let name = PersonName::new(
+///     "John".to_string(),
+///     Some("Michael".to_string()),
+///     "Doe".to_string()
+/// ).unwrap();
+///
+/// assert_eq!(name.full_name(), "John Michael Doe");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonName {
     first_name: String,
     middle_name: Option<String>,
@@ -28,7 +46,10 @@ impl PersonName {
     ///
     /// # Errors
     ///
-    /// Returns `PersonNameError::ValidationError` if any name component is empty after trimming.
+    /// Returns `PersonNameError::ValidationError` if:
+    /// - Any name component is empty after trimming
+    /// - Any name component is less than 1 character after trimming
+    /// - Any name component exceeds 100 characters after trimming
     ///
     /// # Example
     ///
@@ -40,23 +61,27 @@ impl PersonName {
     ///     Some("Michael".to_string()),
     ///     "Doe".to_string()
     /// ).unwrap();
+    /// assert_eq!(name.first_name(), "John");
     /// ```
     pub fn new(
         first_name: String,
         middle_name: Option<String>,
         last_name: String,
     ) -> Result<Self, PersonNameError> {
-        // Validate first name
         Validator::is_not_empty(first_name.trim())?;
+        Validator::is_greater_than(first_name.trim(), 1)?;
+        Validator::is_less_than(first_name.trim(), 100)?;
 
-        // Validate last name
         Validator::is_not_empty(last_name.trim())?;
+        Validator::is_greater_than(last_name.trim(), 1)?;
+        Validator::is_less_than(last_name.trim(), 100)?;
 
-        // Validate and trim the middle name if present
         let trimmed_middle = match &middle_name {
             Some(name) => {
                 let trimmed = name.trim();
                 Validator::is_not_empty(trimmed)?;
+                Validator::is_greater_than(trimmed, 1)?;
+                Validator::is_less_than(trimmed, 100)?;
                 Some(trimmed.to_string())
             }
             None => None,
@@ -265,5 +290,174 @@ mod tests {
         let name2 = PersonName::new("Jane".to_string(), None, "Doe".to_string()).unwrap();
 
         assert_ne!(name1, name2);
+    }
+
+    #[test]
+    fn test_new_with_all_names_empty_returns_error() {
+        let result = PersonName::new("".to_string(), Some("".to_string()), "".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_all_names_whitespace_only_returns_error() {
+        let result = PersonName::new(
+            "   ".to_string(),
+            Some("   ".to_string()),
+            "   ".to_string(),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_mixed_whitespace_and_empty_returns_error() {
+        let result = PersonName::new("".to_string(), Some("   ".to_string()), "".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_empty_first_and_last_returns_error() {
+        let result = PersonName::new("".to_string(), None, "".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_tabs_only_in_first_name_returns_error() {
+        let result = PersonName::new("\t\t".to_string(), None, "Doe".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_newlines_only_in_last_name_returns_error() {
+        let result = PersonName::new("John".to_string(), None, "\n\n".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_mixed_whitespace_in_middle_name_returns_error() {
+        let result = PersonName::new(
+            "John".to_string(),
+            Some(" \t\n ".to_string()),
+            "Doe".to_string(),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_single_character_first_name_returns_ok() {
+        let result = PersonName::new("J".to_string(), None, "Doe".to_string());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_single_character_last_name_returns_ok() {
+        let result = PersonName::new("John".to_string(), None, "D".to_string());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_single_character_middle_name_returns_ok() {
+        let result = PersonName::new("John".to_string(), Some("M".to_string()), "Doe".to_string());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_first_name_at_max_length_returns_ok() {
+        let long_name = "a".repeat(100);
+        let result = PersonName::new(long_name, None, "Doe".to_string());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_first_name_exceeding_max_length_returns_error() {
+        let too_long_name = "a".repeat(101);
+        let result = PersonName::new(too_long_name, None, "Doe".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_last_name_at_max_length_returns_ok() {
+        let long_name = "a".repeat(100);
+        let result = PersonName::new("John".to_string(), None, long_name);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_last_name_exceeding_max_length_returns_error() {
+        let too_long_name = "a".repeat(101);
+        let result = PersonName::new("John".to_string(), None, too_long_name);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_middle_name_at_max_length_returns_ok() {
+        let long_name = "a".repeat(100);
+        let result = PersonName::new("John".to_string(), Some(long_name), "Doe".to_string());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_middle_name_exceeding_max_length_returns_error() {
+        let too_long_name = "a".repeat(101);
+        let result = PersonName::new("John".to_string(), Some(too_long_name), "Doe".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_all_names_at_minimum_valid_length_returns_ok() {
+        let result = PersonName::new("J".to_string(), Some("M".to_string()), "D".to_string());
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_all_names_at_maximum_valid_length_returns_ok() {
+        let long_name = "a".repeat(100);
+        let result = PersonName::new(
+            long_name.clone(),
+            Some(long_name.clone()),
+            long_name,
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_with_first_name_too_long_after_trim_returns_error() {
+        let too_long_name = format!("  {}  ", "a".repeat(101));
+        let result = PersonName::new(too_long_name, None, "Doe".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_last_name_too_long_after_trim_returns_error() {
+        let too_long_name = format!("  {}  ", "a".repeat(101));
+        let result = PersonName::new("John".to_string(), None, too_long_name);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_with_middle_name_too_long_after_trim_returns_error() {
+        let too_long_name = format!("  {}  ", "a".repeat(101));
+        let result = PersonName::new("John".to_string(), Some(too_long_name), "Doe".to_string());
+
+        assert!(result.is_err());
     }
 }
