@@ -1,10 +1,12 @@
+use education_platform_common::{Id, PersonName};
+
 pub struct Person {
-    pub id: Option<String>,
-    pub name: String,
+    id: Option<Id>,
+    name: PersonName,
 }
 
 impl Person {
-    fn new(id: Option<String>, name: String) -> Self {
+    fn new(id: Option<Id>, name: PersonName) -> Self {
         Self { id, name }
     }
 }

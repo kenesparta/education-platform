@@ -30,6 +30,9 @@ dependencies = [
 [[package]]
 name = "education-platform-core"
 version = "0.1.0"
+dependencies = [
+ "education-platform-common",
+]
 
 [[package]]
 name = "education-platform-site"

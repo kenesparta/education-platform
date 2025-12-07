@@ -2,6 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 CRITICAL: Mandatory Requirements
+
+**ALL code implementations MUST automatically follow:**
+
+1. **Domain-Driven Design (DDD) Principles**
+   - Entities: Objects with unique identity that persist over time
+   - Value Objects: Immutable objects compared by value (no identity)
+   - Aggregates: Clusters of entities/value objects treated as a unit
+   - Repositories: Abstractions for data persistence
+   - Services: Domain logic that doesn't belong to entities
+
+2. **All Coding Standards in this file**
+   - Error handling (no `unwrap()`/`expect()` in production)
+   - Documentation requirements (examples, WHY not WHAT)
+   - Naming conventions
+   - Performance attributes (`#[inline]`, `#[must_use]`)
+   - Testing standards
+
+3. **Quality Requirements**
+   - All tests must pass (`cargo test`)
+   - No clippy warnings (`cargo clippy -- -D warnings`)
+   - All public APIs have documentation with examples
+   - Proper error types using `thiserror`
+
+**Never ask whether to follow these standards - always apply them automatically to every implementation.**
+
 ## Project Overview
 
 This is a Rust-based education platform using a Domain-Driven Design (DDD) architecture with bounded contexts. The project is organized as a Cargo workspace with multiple crates representing different bounded contexts and entry points.
@@ -26,6 +52,98 @@ The project follows a modular monorepo pattern with three main categories:
 - **Bounded Context Pattern**: Each domain area is isolated in its own crate under `bounded/`
 - **Separation of Concerns**: Entry points (`cmd/`) are separate from domain logic (`bounded/`)
 - **Module Organization**: Entities are typically organized in a `module_name/entity.rs` pattern (e.g., `user/entity.rs`)
+
+### DDD Tactical Patterns (ALWAYS Apply These)
+
+#### Value Objects
+**Definition**: Immutable objects with no unique identity, compared by their values.
+
+**Characteristics**:
+- Immutable (use `Copy` if small, or return new instances for modifications)
+- Implement `PartialEq`, `Eq`, `Hash` for value equality
+- Self-validating (validation in constructor)
+- No identity field (like `id`)
+- Examples: `PersonName`, `Email`, `Money`, `Id` (UUIDs)
+
+**Implementation Pattern**:
+```rust
+/// A person's name as a Value Object.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PersonName {
+    first_name: Name,
+    last_name: Name,
+}
+
+impl PersonName {
+    /// Creates a new PersonName with validation.
+    pub fn new(first_name: String, last_name: String) -> Result<Self, PersonNameError> {
+        let first_name = Name::new(first_name)?;
+        let last_name = Name::new(last_name)?;
+        Ok(Self { first_name, last_name })
+    }
+}
+```
+
+#### Entities
+**Definition**: Objects with unique identity that persist over time, even if attributes change.
+
+**Characteristics**:
+- Has a unique identifier (usually `Id` field)
+- Identity matters (two entities with same data but different IDs are different)
+- Can be mutable (but prefer immutable updates returning new instances)
+- Equality based on `id`, not all fields
+- Examples: `User`, `Course`, `Order`, `Person`
+
+**Implementation Pattern**:
+```rust
+/// A person entity with unique identity.
+#[derive(Debug, Clone)]
+pub struct Person {
+    id: Id,
+    name: PersonName,
+    email: Email,
+}
+
+impl Person {
+    /// Creates a new Person entity.
+    pub fn new(name: PersonName, email: Email) -> Self {
+        Self {
+            id: Id::new(),
+            name,
+            email,
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn id(&self) -> Id {
+        self.id
+    }
+}
+
+// Equality based on ID only
+impl PartialEq for Person {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Person {}
+```
+
+#### Aggregates
+**Definition**: A cluster of entities and value objects with a root entity.
+
+**Characteristics**:
+- Root entity controls access to aggregate members
+- Consistency boundary (all changes go through root)
+- External objects only hold references to the root
+- Examples: `Order` (aggregate root) containing `OrderLine` entities
+
+**When to Use What**:
+- **Value Object**: No identity needed, immutable, small domain concept (name, money, date range)
+- **Entity**: Needs tracking over time, has lifecycle, identity matters (user, product, order)
+- **Aggregate**: Complex cluster with consistency rules (order + order lines + shipping info)
 
 ### Current Implementation Status
 
