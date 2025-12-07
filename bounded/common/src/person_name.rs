@@ -1,13 +1,12 @@
-use crate::{Validator, ValidatorError};
+use crate::{Name, NameError};
 use thiserror::Error;
 
 /// Error type for `PersonName` validation failures.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum PersonNameError {
-    /// Validation error occurred during name validation.
     #[error("Name validation failed: {0}")]
-    ValidationError(#[from] ValidatorError),
+    NameError(#[from] NameError),
 }
 
 /// Represents a person's name with first, optional middle, and last name components.
@@ -25,33 +24,31 @@ pub enum PersonNameError {
 ///     Some("Michael".to_string()),
 ///     "Doe".to_string()
 /// ).unwrap();
-///
 /// assert_eq!(name.full_name(), "John Michael Doe");
+///
+/// let simple = PersonName::new(
+///     "Jane".to_string(),
+///     None,
+///     "Smith".to_string()
+/// ).unwrap();
+/// assert_eq!(simple.full_name(), "Jane Smith");
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonName {
-    first_name: String,
-    middle_name: Option<String>,
-    last_name: String,
+    first_name: Name,
+    middle_name: Option<Name>,
+    last_name: Name,
 }
 
 impl PersonName {
-    /// Creates a new `PersonName` instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `first_name` - The person's first name (will be trimmed)
-    /// * `middle_name` - Optional middle name (will be trimmed if provided)
-    /// * `last_name` - The person's last name (will be trimmed)
+    /// Creates a new `PersonName` instance with validated name components.
     ///
     /// # Errors
     ///
-    /// Returns `PersonNameError::ValidationError` if:
-    /// - Any name component is empty after trimming
-    /// - Any name component is less than 1 character after trimming
-    /// - Any name component exceeds 100 characters after trimming
+    /// Returns error if any name component is empty, contains only whitespace,
+    /// or exceeds length constraints (1-100 characters).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use education_platform_common::PersonName;
@@ -62,57 +59,104 @@ impl PersonName {
     ///     "Doe".to_string()
     /// ).unwrap();
     /// assert_eq!(name.first_name(), "John");
+    ///
+    /// let simple = PersonName::new(
+    ///     "Jane".to_string(),
+    ///     None,
+    ///     "Smith".to_string()
+    /// ).unwrap();
+    /// assert_eq!(simple.middle_name(), None);
+    ///
+    /// let invalid = PersonName::new("".to_string(), None, "Doe".to_string());
+    /// assert!(invalid.is_err());
     /// ```
     pub fn new(
         first_name: String,
         middle_name: Option<String>,
         last_name: String,
     ) -> Result<Self, PersonNameError> {
-        Validator::is_not_empty(first_name.trim())?;
-        Validator::is_greater_than(first_name.trim(), 1)?;
-        Validator::is_less_than(first_name.trim(), 100)?;
-
-        Validator::is_not_empty(last_name.trim())?;
-        Validator::is_greater_than(last_name.trim(), 1)?;
-        Validator::is_less_than(last_name.trim(), 100)?;
-
-        let trimmed_middle = match &middle_name {
-            Some(name) => {
-                let trimmed = name.trim();
-                Validator::is_not_empty(trimmed)?;
-                Validator::is_greater_than(trimmed, 1)?;
-                Validator::is_less_than(trimmed, 100)?;
-                Some(trimmed.to_string())
-            }
-            None => None,
-        };
-
         Ok(Self {
-            first_name: first_name.trim().to_string(),
-            middle_name: trimmed_middle,
-            last_name: last_name.trim().to_string(),
+            first_name:  Name::new(first_name)?,
+            middle_name: middle_name.map(Name::new).transpose()?,
+            last_name: Name::new(last_name)?,
         })
     }
 
     /// Returns the first name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::PersonName;
+    ///
+    /// let name = PersonName::new("John".to_string(), None, "Doe".to_string()).unwrap();
+    /// assert_eq!(name.first_name(), "John");
+    /// ```
+    #[inline]
+    #[must_use]
     pub fn first_name(&self) -> &str {
         &self.first_name
     }
 
     /// Returns the middle name if present.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::PersonName;
+    ///
+    /// let with_middle = PersonName::new(
+    ///     "John".to_string(),
+    ///     Some("Michael".to_string()),
+    ///     "Doe".to_string()
+    /// ).unwrap();
+    /// assert_eq!(with_middle.middle_name(), Some("Michael"));
+    ///
+    /// let without_middle = PersonName::new("Jane".to_string(), None, "Smith".to_string()).unwrap();
+    /// assert_eq!(without_middle.middle_name(), None);
+    /// ```
+    #[inline]
+    #[must_use]
     pub fn middle_name(&self) -> Option<&str> {
         self.middle_name.as_deref()
     }
 
     /// Returns the last name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::PersonName;
+    ///
+    /// let name = PersonName::new("John".to_string(), None, "Doe".to_string()).unwrap();
+    /// assert_eq!(name.last_name(), "Doe");
+    /// ```
+    #[inline]
+    #[must_use]
     pub fn last_name(&self) -> &str {
         &self.last_name
     }
 
-    /// Returns the full name as a single string.
+    /// Returns the full name formatted as a single string.
     ///
-    /// If a middle name is present, it will be included in the format "First Middle Last".
-    /// Otherwise, the format will be "First Last".
+    /// Format: "First Middle Last" or "First Last" if no middle name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::PersonName;
+    ///
+    /// let name = PersonName::new(
+    ///     "John".to_string(),
+    ///     Some("Michael".to_string()),
+    ///     "Doe".to_string()
+    /// ).unwrap();
+    /// assert_eq!(name.full_name(), "John Michael Doe");
+    ///
+    /// let simple = PersonName::new("Jane".to_string(), None, "Smith".to_string()).unwrap();
+    /// assert_eq!(simple.full_name(), "Jane Smith");
+    /// ```
+    #[must_use]
     pub fn full_name(&self) -> String {
         match &self.middle_name {
             Some(middle) => format!("{} {} {}", self.first_name, middle, self.last_name),
@@ -428,11 +472,7 @@ mod tests {
     #[test]
     fn test_new_with_all_names_at_maximum_valid_length_returns_ok() {
         let long_name = "a".repeat(100);
-        let result = PersonName::new(
-            long_name.clone(),
-            Some(long_name.clone()),
-            long_name,
-        );
+        let result = PersonName::new(long_name.clone(), Some(long_name.clone()), long_name);
 
         assert!(result.is_ok());
     }

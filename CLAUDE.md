@@ -157,6 +157,290 @@ pub fn create_user(email: &str) -> Result<User, UserError> {
 - **Public API**: Only expose what's necessary via `pub`
 - **Documentation**: Add doc comments (`///`) for all public items
 
+### Documentation Standards
+
+**CRITICAL: Comments explain WHY (business logic), never WHAT (code already shows that).**
+
+#### What NOT to Comment
+
+**NEVER add comments that restate what the code already says:**
+
+❌ **FORBIDDEN - These comments are useless:**
+```rust
+/// First name component (always required).
+first_name: Name,
+
+/// Middle name component (optional).
+middle_name: Option<Name>,
+
+// Validate and create first name
+let first_name = Name::new(first_name)?;
+
+// This is a function
+pub fn get_user() { }
+
+// This is a validation
+Validator::is_not_empty(name)?;
+
+// Loop through users
+for user in users { }
+```
+
+**Why these are bad:**
+- Field types are self-documenting (`Name` vs `Option<Name>`)
+- Code is self-explanatory
+- Comments add noise without value
+- You're describing WHAT, not WHY
+
+#### What TO Document
+
+**ONLY document:**
+1. Public API with examples
+2. Business logic and rules (WHY)
+3. Non-obvious behavior
+
+#### Required Documentation for Public Items
+
+For **public functions/methods**:
+- One-sentence summary
+- `# Errors` section (if returns `Result`)
+- `# Examples` section with runnable code (REQUIRED)
+
+```rust
+/// Returns the first name.
+///
+/// # Examples
+///
+/// ```
+/// use education_platform_common::PersonName;
+///
+/// let name = PersonName::new("John".to_string(), None, "Doe".to_string()).unwrap();
+/// assert_eq!(name.first_name(), "John");
+/// ```
+#[inline]
+#[must_use]
+pub fn first_name(&self) -> &str {
+    &self.first_name
+}
+```
+
+For **structs**:
+- Summary of what it represents
+- `# Examples` section (REQUIRED)
+- **NO field comments** (types are self-documenting)
+
+```rust
+/// Represents a person's name with first, optional middle, and last name components.
+///
+/// All name components are validated to be non-empty and are automatically trimmed.
+/// Name length must be between 1 and 100 characters (inclusive) after trimming.
+///
+/// # Examples
+///
+/// ```
+/// use education_platform_common::PersonName;
+///
+/// let name = PersonName::new(
+///     "John".to_string(),
+///     Some("Michael".to_string()),
+///     "Doe".to_string()
+/// ).unwrap();
+/// assert_eq!(name.full_name(), "John Michael Doe");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PersonName {
+    first_name: Name,
+    middle_name: Option<Name>,
+    last_name: Name,
+}
+```
+
+For **constructors**:
+```rust
+/// Creates a new `PersonName` instance with validated name components.
+///
+/// # Errors
+///
+/// Returns error if any name component is empty, contains only whitespace,
+/// or exceeds length constraints (1-100 characters).
+///
+/// # Examples
+///
+/// ```
+/// use education_platform_common::PersonName;
+///
+/// let name = PersonName::new(
+///     "John".to_string(),
+///     Some("Michael".to_string()),
+///     "Doe".to_string()
+/// ).unwrap();
+///
+/// let invalid = PersonName::new("".to_string(), None, "Doe".to_string());
+/// assert!(invalid.is_err());
+/// ```
+pub fn new(
+    first_name: String,
+    middle_name: Option<String>,
+    last_name: String,
+) -> Result<Self, PersonNameError> {
+    let first_name = Name::new(first_name)?;
+    let middle_name = middle_name.map(Name::new).transpose()?;
+    let last_name = Name::new(last_name)?;
+
+    Ok(Self {
+        first_name,
+        middle_name,
+        last_name,
+    })
+}
+```
+
+#### When Inline Comments ARE Acceptable
+
+Use inline `//` comments ONLY for:
+
+**Business rules:**
+```rust
+// IBAN validation requires check digit calculation per ISO 13616
+let checksum = calculate_iban_checksum(&account);
+```
+
+**Performance rationale:**
+```rust
+// Batch size of 100 reduces database round trips by 80% in production
+const BATCH_SIZE: usize = 100;
+```
+
+**Workarounds:**
+```rust
+// Workaround: regex crate doesn't support lookaheads in version 1.x
+let pattern = format!("(?:{})", base_pattern);
+```
+
+**NEVER use inline comments to describe obvious code flow.**
+
+### Rust Attributes and Directives
+
+**Use Rust attributes to improve code quality, performance, and safety.**
+
+#### Performance Attributes
+
+**`#[inline]`**: Suggest function inlining for small, frequently-called functions
+
+Use for:
+- Getter/setter methods
+- Small wrapper functions
+- Delegation methods
+- Hot-path code
+
+```rust
+/// Returns the configuration used for this name.
+#[inline]
+#[must_use]
+pub const fn config(&self) -> &NameConfig {
+    &self.config
+}
+```
+
+Variants:
+- `#[inline]` - Suggests inlining (compiler may ignore)
+- `#[inline(always)]` - Strongly requests inlining
+- `#[inline(never)]` - Prevents inlining
+
+**When NOT to use `#[inline]`:**
+- Large functions (>10-20 lines)
+- Functions called infrequently
+- Generic functions (already inlined by default)
+
+#### Safety Attributes
+
+**`#[must_use]`**: Warn if return value is ignored
+
+Use for:
+- Getter methods that allocate
+- Builder pattern methods
+- Functions where ignoring the result is likely a bug
+- Functions that return newly allocated data
+
+```rust
+/// Returns the full name as a single formatted string.
+///
+/// This method allocates a new `String`.
+#[must_use]
+pub fn full_name(&self) -> String {
+    // ... implementation
+}
+
+/// Sets the minimum length constraint.
+#[must_use]
+pub const fn min_length(mut self, min: usize) -> Self {
+    self.min_length = min;
+    self  // If ignored, configuration is lost!
+}
+```
+
+**When NOT to use `#[must_use]`:**
+- Result<T, E> already has #[must_use]
+- Simple setters that modify in place
+- Functions returning `()`
+
+#### Type Attributes
+
+**`#[derive(...)]`**: Automatically implement common traits
+
+Standard derives to consider:
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Name { /* ... */ }
+```
+
+Common trait combinations:
+- **Value types**: `Debug, Clone, PartialEq, Eq, Hash`
+- **Ordered types**: Add `PartialOrd, Ord`
+- **Copy types** (small, stack-only): Add `Copy` (requires `Clone`)
+- **Serializable** (with serde): Add `Serialize, Deserialize`
+- **Errors**: `Error, Debug, Clone, PartialEq, Eq`
+
+**`#[non_exhaustive]`**: Allow adding enum variants/struct fields without breaking changes
+
+```rust
+/// Error type for `Name` validation failures.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]  // Can add variants in future versions
+pub enum NameError {
+    ValidationError(#[from] ValidatorError),
+}
+```
+
+Use for:
+- Public error enums
+- Public API enums that might grow
+- Configuration structs that might gain fields
+
+#### Function Attributes Summary
+
+| Attribute | Purpose | Use When |
+|-----------|---------|----------|
+| `#[inline]` | Performance hint | Small, frequently-called functions |
+| `#[inline(always)]` | Force inlining | Critical hot-path code |
+| `#[must_use]` | Safety/correctness | Ignoring return value is a bug |
+| `#[allow(clippy::...)]` | Suppress warning | False positive or intentional |
+| `#[deprecated]` | Mark as deprecated | Phasing out old APIs |
+
+#### Implementation Checklist
+
+When writing new code, ensure:
+- [ ] All public items have doc comments with `# Examples` section
+- [ ] NO field comments on structs (types are self-documenting)
+- [ ] NO inline comments unless explaining business logic (WHY, not WHAT)
+- [ ] Getters use `#[inline]` and `#[must_use]`
+- [ ] Builder methods use `#[must_use]`
+- [ ] Structs derive appropriate traits (Debug, Clone, PartialEq, Eq, Hash)
+- [ ] Error enums use `#[non_exhaustive]`
+- [ ] Error types derive (Error, Debug, Clone, PartialEq, Eq)
+- [ ] Doc examples are tested (cargo test runs them)
+- [ ] No clippy warnings with `cargo clippy -- -D warnings`
+
 ### Testing Standards
 
 - **Unit tests**: Place in same file under `#[cfg(test)] mod tests`
