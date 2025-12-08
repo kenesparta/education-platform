@@ -567,6 +567,33 @@ When writing new code, ensure:
 - **Coverage**: All public functions should have tests
 - **Test organization**: Group related tests in nested modules
 
+#### Test Coverage
+
+This project uses `cargo-llvm-cov` for measuring test coverage:
+
+```bash
+# Generate coverage report (terminal)
+cargo llvm-cov --workspace --all-targets
+
+# Generate HTML report (recommended for detailed analysis)
+cargo llvm-cov --workspace --all-targets --html
+open target/llvm-cov/html/index.html
+
+# Generate LCOV format (for CI/CD integration)
+cargo llvm-cov --workspace --lcov --output-path lcov.info
+```
+
+**Coverage Requirements:**
+- Aim for >90% coverage on all bounded contexts
+- 100% coverage on critical domain logic (Value Objects, Entities)
+- All public APIs must be tested
+- Entry points (`cmd/`) may have lower coverage (UI/integration heavy)
+
+**Installation:**
+```bash
+cargo install cargo-llvm-cov
+```
+
 #### Example Test Structure
 
 ```rust

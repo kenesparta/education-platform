@@ -70,6 +70,33 @@ cargo test -p education-platform-auth
 cargo test -- --nocapture
 ```
 
+### Test Coverage
+
+This project uses `cargo-llvm-cov` for test coverage analysis.
+
+```bash
+# Install cargo-llvm-cov (one-time setup)
+cargo install cargo-llvm-cov
+
+# Generate coverage report (terminal output)
+cargo llvm-cov --workspace --all-targets
+
+# Generate HTML coverage report
+cargo llvm-cov --workspace --all-targets --html
+
+# Open HTML report (macOS)
+open target/llvm-cov/html/index.html
+
+# Generate coverage in different formats
+cargo llvm-cov --workspace --lcov --output-path lcov.info  # LCOV format
+cargo llvm-cov --workspace --json --output-path coverage.json  # JSON format
+```
+
+**Current Coverage:** ~96% overall
+- `bounded/common`: 96-100% coverage
+- `bounded/core`: Needs tests (0% coverage)
+- `bounded/auth`: Needs tests (0% coverage)
+
 ### Code Quality
 
 ```bash
@@ -142,4 +169,4 @@ This is an early-stage project with foundational implementations:
 
 ## License
 
-[Add your license information here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
