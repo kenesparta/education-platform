@@ -1,3 +1,3 @@
 mod dni;
 
-pub use dni::{Dni, DniError};
+pub use dni::*;

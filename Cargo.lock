@@ -32,6 +32,7 @@ name = "education-platform-core"
 version = "0.1.0"
 dependencies = [
  "education-platform-common",
+ "thiserror",
 ]
 
 [[package]]

@@ -1,2 +1,8 @@
 /target
 .idea
+
+# Test coverage
+lcov.info
+coverage.json
+*.profraw
+*.profdata

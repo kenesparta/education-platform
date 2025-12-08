@@ -133,6 +133,28 @@ impl Dni {
         &self.verification_char
     }
 
+    /// Returns the complete DNI string with verification character in format "XXXXXXXX-Y".
+    ///
+    /// This method allocates a new `String`. Use this when you need the full formatted DNI
+    /// representation (e.g., for display or serialization purposes).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::document::Dni;
+    ///
+    /// let dni = Dni::new("12345678-1".to_string()).unwrap();
+    /// assert_eq!(dni.with_verification_char(), "12345678-1");
+    ///
+    /// let dni = Dni::new("00000001-I".to_string()).unwrap();
+    /// assert_eq!(dni.with_verification_char(), "00000001-I");
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn with_verification_char(&self) -> String {
+        format!("{}-{}", self.value, self.verification_char)
+    }
+
     fn validate_format(dni: &str) -> Result<(), DniError> {
         let regex = DNI_REGEX
             .as_ref()
@@ -376,5 +398,54 @@ mod tests {
 
         assert_eq!(dni1, dni2);
         assert_ne!(dni1, dni3);
+    }
+
+    #[test]
+    fn test_with_verification_char_numeric() {
+        let dni = Dni::new("12345678-1".to_string()).unwrap();
+        assert_eq!(dni.with_verification_char(), "12345678-1");
+    }
+
+    #[test]
+    fn test_with_verification_char_alpha() {
+        let dni = Dni::new("00000001-I".to_string()).unwrap();
+        assert_eq!(dni.with_verification_char(), "00000001-I");
+    }
+
+    #[test]
+    fn test_with_verification_char_matches_display() {
+        let dni = Dni::new("17801146-0".to_string()).unwrap();
+        assert_eq!(dni.with_verification_char(), dni.to_string());
+    }
+
+    #[test]
+    fn test_with_verification_char_idempotent() {
+        let dni = Dni::new("12345678-1".to_string()).unwrap();
+        let first_call = dni.with_verification_char();
+        let second_call = dni.with_verification_char();
+        assert_eq!(first_call, second_call);
+    }
+
+    #[test]
+    fn test_with_verification_char_zero_verification() {
+        let dni = Dni::new("17801146-0".to_string()).unwrap();
+        assert_eq!(dni.with_verification_char(), "17801146-0");
+    }
+
+    #[test]
+    fn test_with_verification_char_preserves_format() {
+        let original = "00000001-4";
+        let dni = Dni::new(original.to_string()).unwrap();
+        assert_eq!(dni.with_verification_char(), original);
+    }
+
+    #[test]
+    fn test_with_verification_char_different_dnis() {
+        let dni1 = Dni::new("12345678-1".to_string()).unwrap();
+        let dni2 = Dni::new("87654321-0".to_string()).unwrap();
+
+        assert_ne!(dni1.with_verification_char(), dni2.with_verification_char());
+        assert_eq!(dni1.with_verification_char(), "12345678-1");
+        assert_eq!(dni2.with_verification_char(), "87654321-0");
     }
 }
