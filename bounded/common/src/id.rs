@@ -394,9 +394,11 @@ mod tests {
         let id_str = id.to_string();
 
         assert_eq!(id_str.len(), 26);
-        assert!(id_str
-            .chars()
-            .all(|c| "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(c)));
+        assert!(
+            id_str
+                .chars()
+                .all(|c| "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(c))
+        );
     }
 
     #[test]
