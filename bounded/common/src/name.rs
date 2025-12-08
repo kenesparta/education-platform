@@ -1,10 +1,15 @@
 use crate::{Validator, ValidatorError};
+use regex::Regex;
 use std::fmt;
 use std::ops::Deref;
+use std::sync::LazyLock;
 use thiserror::Error;
 
 const MAX_LENGTH: usize = 101;
 const MIN_LENGTH: usize = 2;
+
+static LATIN_NAME_REGEX: LazyLock<Result<Regex, regex::Error>> =
+    LazyLock::new(|| Regex::new(r"^[\p{L}\s'\-]+$"));
 
 /// Error type for `Name` validation failures.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -214,12 +219,55 @@ impl Name {
         Validator::is_not_empty(trimmed)?;
         Validator::is_greater_than(trimmed, config.min_length)?;
         Validator::is_less_than(trimmed, config.max_length)?;
-        Validator::is_valid_latin_name(trimmed)?;
+        Self::is_valid_latin_name(trimmed)?;
 
         Ok(Self {
             inner: trimmed.to_string(),
             config,
         })
+    }
+
+    /// Validates that a name contains only Latin characters.
+    ///
+    /// Accepts:
+    /// - English letters (a-z, A-Z)
+    /// - Spanish letters with diacritics (á, é, í, ó, ú, ñ, ü, etc.)
+    /// - Portuguese letters with diacritics (á, à, â, ã, ç, etc.)
+    /// - Spaces (for multi-word names)
+    /// - Hyphens (for compound names like "María-José")
+    /// - Apostrophes (for names like "O'Brien")
+    ///
+    /// Rejects:
+    /// - Numbers (0-9)
+    /// - Special characters (!@#$%^&*()+=[]{}|;:",.<>?/)
+    ///
+    /// # Examples
+    ///
+    ///
+    /// ```
+    /// use education_platform_common::Name;
+    ///
+    /// assert!(Name::is_valid_latin_name("José").is_ok());
+    /// assert!(Name::is_valid_latin_name("María García").is_ok());
+    /// assert!(Name::is_valid_latin_name("O'Brien").is_ok());
+    /// assert!(Name::is_valid_latin_name("Jean-Pierre").is_ok());
+    /// assert!(Name::is_valid_latin_name("João").is_ok());
+    /// assert!(Name::is_valid_latin_name("Nuñez").is_ok());
+    ///
+    /// assert!(Name::is_valid_latin_name("John123").is_err());
+    /// assert!(Name::is_valid_latin_name("José@email").is_err());
+    /// assert!(Name::is_valid_latin_name("Test$Name").is_err());
+    /// ```
+    pub fn is_valid_latin_name(name: &str) -> Result<(), ValidatorError> {
+        let regex = LATIN_NAME_REGEX
+            .as_ref()
+            .map_err(|e| ValidatorError::RegexError(e.to_string()))?;
+
+        if !regex.is_match(name) {
+            return Err(ValidatorError::InvalidNameCharacters);
+        }
+
+        Ok(())
     }
 
     /// Returns the name as a string slice.
@@ -456,5 +504,88 @@ mod tests {
         assert!(Name::new("Mary Jane".to_string()).is_ok());
         assert!(Name::new("María García".to_string()).is_ok());
         assert!(Name::new("Anne Marie".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_valid_latin_names_english() {
+        assert!(Name::is_valid_latin_name("John").is_ok());
+        assert!(Name::is_valid_latin_name("Mary Jane").is_ok());
+        assert!(Name::is_valid_latin_name("O'Brien").is_ok());
+        assert!(Name::is_valid_latin_name("Mary-Jane").is_ok());
+        assert!(Name::is_valid_latin_name("Anne Marie").is_ok());
+    }
+
+    #[test]
+    fn test_valid_latin_names_spanish() {
+        assert!(Name::is_valid_latin_name("José").is_ok());
+        assert!(Name::is_valid_latin_name("María").is_ok());
+        assert!(Name::is_valid_latin_name("Nuñez").is_ok());
+        assert!(Name::is_valid_latin_name("García").is_ok());
+        assert!(Name::is_valid_latin_name("Rodríguez").is_ok());
+        assert!(Name::is_valid_latin_name("María José").is_ok());
+        assert!(Name::is_valid_latin_name("María-José").is_ok());
+        assert!(Name::is_valid_latin_name("Ángel").is_ok());
+        assert!(Name::is_valid_latin_name("Mónica").is_ok());
+    }
+
+    #[test]
+    fn test_valid_latin_names_portuguese() {
+        assert!(Name::is_valid_latin_name("João").is_ok());
+        assert!(Name::is_valid_latin_name("José").is_ok());
+        assert!(Name::is_valid_latin_name("António").is_ok());
+        assert!(Name::is_valid_latin_name("Conceição").is_ok());
+        assert!(Name::is_valid_latin_name("São Paulo").is_ok());
+    }
+
+    #[test]
+    fn test_invalid_latin_names_with_numbers() {
+        assert!(matches!(
+            Name::is_valid_latin_name("John123"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("María2"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("Test123Name"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+    }
+
+    #[test]
+    fn test_invalid_latin_names_with_special_characters() {
+        assert!(matches!(
+            Name::is_valid_latin_name("John@Doe"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("Test$Name"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("Name!"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("José#García"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("Test.Name"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+        assert!(matches!(
+            Name::is_valid_latin_name("Name_Test"),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
+    }
+
+    #[test]
+    fn test_invalid_latin_names_empty() {
+        assert!(matches!(
+            Name::is_valid_latin_name(""),
+            Err(ValidatorError::InvalidNameCharacters)
+        ));
     }
 }
