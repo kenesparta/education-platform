@@ -21,14 +21,8 @@ pub enum DniError {
     #[error("Invalid digit: {0}")]
     DigitNotValid(String),
 
-    #[error(
-        "Incorrect validation character: expected {expected_numeric} or {expected_alpha}, received {received}"
-    )]
-    IncorrectValidationDigit {
-        expected_numeric: String,
-        expected_alpha: String,
-        received: String,
-    },
+    #[error("Incorrect validation character: {0}")]
+    IncorrectValidationDigit(String),
 }
 
 const DOCUMENT_SIZE: usize = 8;
@@ -178,11 +172,9 @@ impl Dni {
         let expected_numeric = NUMERIC_SERIES[index];
         let expected_alpha = ALPHA_SERIES[index];
         if validation_char != expected_numeric && validation_char != expected_alpha {
-            return Err(DniError::IncorrectValidationDigit {
-                expected_numeric: expected_numeric.to_string(),
-                expected_alpha: expected_alpha.to_string(),
-                received: validation_char.to_string(),
-            });
+            return Err(DniError::IncorrectValidationDigit(
+                validation_char.to_string(),
+            ));
         }
 
         Ok(())
@@ -327,14 +319,8 @@ mod tests {
     fn test_dni_incorrect_verification_digit_shows_expected() {
         let result = Dni::new("12345678-9".to_string());
         match result {
-            Err(DniError::IncorrectValidationDigit {
-                expected_numeric,
-                expected_alpha,
-                received,
-            }) => {
+            Err(DniError::IncorrectValidationDigit(received)) => {
                 assert_eq!(received, "9");
-                assert!(!expected_numeric.is_empty());
-                assert!(!expected_alpha.is_empty());
             }
             _ => panic!("Expected IncorrectValidationDigit error"),
         }
