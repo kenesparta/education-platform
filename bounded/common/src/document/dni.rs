@@ -47,7 +47,7 @@ static DNI_REGEX: LazyLock<Result<Regex, regex::Error>> =
 /// # Examples
 ///
 /// ```
-/// use education_platform_common::document::Dni;
+/// use education_platform_common::Dni;
 ///
 /// let dni = Dni::new("12345678-1".to_string()).unwrap();
 /// assert_eq!(dni.value(), "12345678");
@@ -77,7 +77,7 @@ impl Dni {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_common::document::Dni;
+    /// use education_platform_common::Dni;
     ///
     /// let dni = Dni::new("12345678-1".to_string()).unwrap();
     /// assert_eq!(dni.value(), "12345678");
@@ -106,7 +106,7 @@ impl Dni {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_common::document::Dni;
+    /// use education_platform_common::Dni;
     ///
     /// let dni = Dni::new("12345678-1".to_string()).unwrap();
     /// assert_eq!(dni.value(), "12345678");
@@ -122,7 +122,7 @@ impl Dni {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_common::document::Dni;
+    /// use education_platform_common::Dni;
     ///
     /// let dni = Dni::new("12345678-1".to_string()).unwrap();
     /// assert_eq!(dni.verification_char(), "1");
@@ -141,7 +141,7 @@ impl Dni {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_common::document::Dni;
+    /// use education_platform_common::Dni;
     ///
     /// let dni = Dni::new("12345678-1".to_string()).unwrap();
     /// assert_eq!(dni.with_verification_char(), "12345678-1");

@@ -23,7 +23,7 @@ pub enum PersonError {
 /// # Examples
 ///
 /// ```
-/// use education_platform_core::person::Person;
+/// use education_platform_core::Person;
 ///
 /// let person = Person::new(
 ///     "John".to_string(),
@@ -53,7 +53,7 @@ impl Person {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::person::Person;
+    /// use education_platform_core::Person;
     ///
     /// let person = Person::new(
     ///     "María".to_string(),
@@ -95,7 +95,7 @@ impl Person {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::person::Person;
+    /// use education_platform_core::Person;
     ///
     /// let person = Person::new(
     ///     "John".to_string(),
@@ -118,7 +118,7 @@ impl Person {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::person::Person;
+    /// use education_platform_core::Person;
     ///
     /// let person = Person::new(
     ///     "John".to_string(),
