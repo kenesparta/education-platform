@@ -23,6 +23,28 @@ pub enum DniError {
 
     #[error("Incorrect validation character: {0}")]
     IncorrectValidationDigit(String),
+
+    #[error("DNI segment classification failed")]
+    NoSegment,
+}
+
+/// Represents the classification segment of a Peruvian DNI based on its first digit.
+///
+/// The first digit of a DNI indicates the era and conditions under which it was issued,
+/// reflecting Peru's civil registry evolution and age-based document issuance policies.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Segment {
+    /// DNI issued before or during 1996 when RENIEC was created.
+    /// These individuals originally had a "libreta electoral" document.
+    OlderThan1996,
+
+    /// DNI issued to individuals 18 years or older, who never received a yellow DNI.
+    /// Yellow DNIs are issued to minors under 18.
+    NoYellowDNI,
+
+    /// DNI issued to individuals who previously had or currently have a yellow DNI.
+    /// Indicates the person was once under 18 when their document was issued.
+    WithYellowDNI,
 }
 
 const DOCUMENT_SIZE: usize = 8;
@@ -61,6 +83,7 @@ static DNI_REGEX: LazyLock<Result<Regex, regex::Error>> =
 pub struct Dni {
     value: String,
     verification_char: String,
+    segment: Segment,
 }
 
 impl Dni {
@@ -98,6 +121,7 @@ impl Dni {
         Ok(Self {
             value: dni_value.to_string(),
             verification_char: validation_char.to_string(),
+            segment: Self::classify_segment(dni_value)?,
         })
     }
 
@@ -131,6 +155,22 @@ impl Dni {
     #[must_use]
     pub fn verification_char(&self) -> &str {
         &self.verification_char
+    }
+
+    /// Returns the DNI segment classification.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::{Dni, Segment};
+    ///
+    /// let dni = Dni::new("12345678-1".to_string()).unwrap();
+    /// assert_eq!(dni.segment(), &Segment::OlderThan1996);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub const fn segment(&self) -> &Segment {
+        &self.segment
     }
 
     /// Returns the complete DNI string with verification character in format "XXXXXXXX-Y".
@@ -188,7 +228,7 @@ impl Dni {
             .map(|(digit, multiplier)| digit * multiplier)
             .sum();
 
-        // Compute check digit index (modulo 11 complement)
+        // Compute check digit index (modulo `BASE` complement)
         let index = (BASE - checksum % BASE) % BASE;
 
         let expected_numeric = NUMERIC_SERIES[index];
@@ -200,6 +240,15 @@ impl Dni {
         }
 
         Ok(())
+    }
+
+    fn classify_segment(dni: &str) -> Result<Segment, DniError> {
+        match dni.chars().next() {
+            Some('0' | '1' | '2' | '3') => Ok(Segment::OlderThan1996),
+            Some('4' | '5') => Ok(Segment::NoYellowDNI),
+            Some('6' | '7' | '8' | '9') => Ok(Segment::WithYellowDNI),
+            _ => Err(DniError::NoSegment),
+        }
     }
 }
 
@@ -447,5 +496,240 @@ mod tests {
         assert_ne!(dni1.with_verification_char(), dni2.with_verification_char());
         assert_eq!(dni1.with_verification_char(), "12345678-1");
         assert_eq!(dni2.with_verification_char(), "87654321-0");
+    }
+
+    // Segment classification tests
+    #[test]
+    fn test_segment_older_than_1996_starts_with_0() {
+        let dni = Dni::new("00000001-4".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::OlderThan1996);
+    }
+
+    #[test]
+    fn test_segment_older_than_1996_starts_with_1() {
+        let dni = Dni::new("12345678-1".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::OlderThan1996);
+    }
+
+    #[test]
+    fn test_segment_older_than_1996_starts_with_2() {
+        let dni = Dni::new("20000001-9".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::OlderThan1996);
+    }
+
+    #[test]
+    fn test_segment_older_than_1996_starts_with_3() {
+        let dni = Dni::new("30000001-6".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::OlderThan1996);
+    }
+
+    #[test]
+    fn test_segment_no_yellow_dni_starts_with_4() {
+        let dni = Dni::new("40000001-3".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::NoYellowDNI);
+    }
+
+    #[test]
+    fn test_segment_no_yellow_dni_starts_with_5() {
+        let dni = Dni::new("50000001-1".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::NoYellowDNI);
+    }
+
+    #[test]
+    fn test_segment_with_yellow_dni_starts_with_6() {
+        let dni = Dni::new("60000001-8".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::WithYellowDNI);
+    }
+
+    #[test]
+    fn test_segment_with_yellow_dni_starts_with_7() {
+        let dni = Dni::new("70000001-5".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::WithYellowDNI);
+    }
+
+    #[test]
+    fn test_segment_with_yellow_dni_starts_with_8() {
+        let dni = Dni::new("80000001-2".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::WithYellowDNI);
+    }
+
+    #[test]
+    fn test_segment_with_yellow_dni_starts_with_9() {
+        let dni = Dni::new("90000001-0".to_string()).unwrap();
+        assert_eq!(dni.segment, Segment::WithYellowDNI);
+    }
+
+    #[test]
+    fn test_segment_getter_method() {
+        let dni1 = Dni::new("12345678-1".to_string()).unwrap();
+        assert_eq!(dni1.segment(), &Segment::OlderThan1996);
+
+        let dni2 = Dni::new("40000001-3".to_string()).unwrap();
+        assert_eq!(dni2.segment(), &Segment::NoYellowDNI);
+
+        let dni3 = Dni::new("70000001-5".to_string()).unwrap();
+        assert_eq!(dni3.segment(), &Segment::WithYellowDNI);
+    }
+
+    // Additional verification character tests
+    #[test]
+    fn test_numeric_verification_chars_valid() {
+        let valid_dnis = vec![
+            "17801146-0",
+            "12345678-1",
+            "20000001-9",
+            "00000001-4",
+            "50000001-1",
+            "90000001-0",
+        ];
+
+        for dni_str in valid_dnis {
+            let dni = Dni::new(dni_str.to_string());
+            assert!(
+                dni.is_ok(),
+                "DNI {} should be valid but got error: {:?}",
+                dni_str,
+                dni.err()
+            );
+        }
+    }
+
+    #[test]
+    fn test_alpha_verification_chars_valid() {
+        let valid_dnis = vec!["00000001-I"];
+
+        for dni_str in valid_dnis {
+            let dni = Dni::new(dni_str.to_string());
+            assert!(
+                dni.is_ok(),
+                "DNI {} should be valid with alpha verification but got error: {:?}",
+                dni_str,
+                dni.err()
+            );
+        }
+    }
+
+    // Edge cases and boundary tests
+    #[test]
+    fn test_dni_all_zeros_except_last() {
+        let dni = Dni::new("00000001-4".to_string()).unwrap();
+        assert_eq!(dni.value(), "00000001");
+        assert_eq!(dni.verification_char(), "4");
+    }
+
+    #[test]
+    fn test_dni_with_mixed_verification() {
+        let dni_numeric = Dni::new("00000001-4".to_string()).unwrap();
+        let dni_alpha = Dni::new("00000001-I".to_string()).unwrap();
+
+        assert_eq!(dni_numeric.value(), dni_alpha.value());
+        assert_ne!(
+            dni_numeric.verification_char(),
+            dni_alpha.verification_char()
+        );
+    }
+
+    #[test]
+    fn test_dni_incorrect_verification_numeric_when_should_be_alpha() {
+        let result = Dni::new("00000001-0".to_string());
+        assert!(matches!(
+            result,
+            Err(DniError::IncorrectValidationDigit { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dni_incorrect_verification_alpha_when_should_be_different() {
+        let result = Dni::new("00000001-A".to_string());
+        assert!(matches!(
+            result,
+            Err(DniError::IncorrectValidationDigit { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dni_sequential_numbers_have_different_verification() {
+        let dni1 = Dni::new("12345678-1".to_string()).unwrap();
+        let dni2 = Dni::new("87654321-0".to_string()).unwrap();
+
+        assert_ne!(dni1.value(), dni2.value());
+        assert_ne!(dni1.verification_char(), dni2.verification_char());
+    }
+
+    #[test]
+    fn test_dni_clone_independence() {
+        let dni1 = Dni::new("12345678-1".to_string()).unwrap();
+        let dni2 = dni1.clone();
+
+        assert_eq!(dni1, dni2);
+        assert_eq!(dni1.value(), dni2.value());
+        assert_eq!(dni1.verification_char(), dni2.verification_char());
+    }
+
+    #[test]
+    fn test_dni_debug_format() {
+        let dni = Dni::new("12345678-1".to_string()).unwrap();
+        let debug_str = format!("{:?}", dni);
+
+        assert!(debug_str.contains("12345678"));
+        assert!(debug_str.contains("1"));
+    }
+
+    #[test]
+    fn test_dni_with_leading_zeros() {
+        let dni = Dni::new("00000001-4".to_string()).unwrap();
+        assert_eq!(dni.value(), "00000001");
+        assert_eq!(dni.with_verification_char(), "00000001-4");
+    }
+
+    #[test]
+    fn test_dni_verification_algorithm_consistency() {
+        let test_cases = vec![
+            "00000001-4",
+            "00000001-I",
+            "12345678-1",
+            "17801146-0",
+            "87654321-0",
+        ];
+
+        for dni_str in test_cases {
+            let result = Dni::new(dni_str.to_string());
+            assert!(
+                result.is_ok(),
+                "DNI {} should be valid but got error: {:?}",
+                dni_str,
+                result.err()
+            );
+        }
+    }
+
+    #[test]
+    fn test_dni_format_error_with_multiple_dashes() {
+        let result = Dni::new("12-34-56-78-1".to_string());
+        assert!(matches!(result, Err(DniError::IncorrectFormat)));
+    }
+
+    #[test]
+    fn test_dni_format_error_with_spaces_in_middle() {
+        let result = Dni::new("1234 5678-1".to_string());
+        assert!(matches!(result, Err(DniError::IncorrectFormat)));
+    }
+
+    #[test]
+    fn test_dni_format_error_negative_number() {
+        let result = Dni::new("-12345678-1".to_string());
+        assert!(matches!(result, Err(DniError::IncorrectFormat)));
+    }
+
+    #[test]
+    fn test_dni_trimming_preserves_validity() {
+        let dni_trimmed = Dni::new("12345678-1".to_string()).unwrap();
+        let dni_with_spaces = Dni::new("  12345678-1  ".to_string()).unwrap();
+
+        assert_eq!(dni_trimmed.value(), dni_with_spaces.value());
+        assert_eq!(
+            dni_trimmed.verification_char(),
+            dni_with_spaces.verification_char()
+        );
     }
 }
