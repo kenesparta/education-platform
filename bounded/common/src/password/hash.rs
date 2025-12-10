@@ -1,6 +1,9 @@
 use std::fmt;
 use thiserror::Error;
 
+const VALID_BCRYPT_PREFIXES: [&str; 4] = ["$2a$", "$2b$", "$2x$", "$2y$"];
+const BCRYPT_LENGTH: usize = 60;
+
 /// Error types for hashed password validation failures.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -55,6 +58,7 @@ pub struct HashedPassword {
 pub enum HashingAlgorithm {
     /// Bcrypt algorithm (all variants: $2a$, $2b$, $2x$, $2y$)
     Bcrypt,
+
     /// Argon2 algorithm family
     Argon(ArgonVariant),
 }
@@ -72,8 +76,10 @@ impl fmt::Display for HashingAlgorithm {
 pub enum ArgonVariant {
     /// Argon2d variant (data-dependent)
     Argon2d,
+
     /// Argon2i variant (data-independent)
     Argon2i,
+
     /// Argon2id variant (hybrid mode, recommended)
     Argon2id,
 }
@@ -182,52 +188,46 @@ impl HashedPassword {
     /// Bcrypt format: `$2[a/b/x/y]$[cost]$[22-char salt][31-char hash]`
     /// Total length: 60 characters
     fn validate_bcrypt(hash: &str) -> Result<(), HashedPasswordError> {
-        const BCRYPT_LENGTH: usize = 60;
-        const ALGORITHM: &str = "Bcrypt";
-
         if hash.len() != BCRYPT_LENGTH {
             return Err(HashedPasswordError::LengthNotValid {
-                algorithm: ALGORITHM.to_string(),
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
                 expected: format!("{BCRYPT_LENGTH}"),
                 actual: hash.len(),
             });
         }
 
-        let valid_prefixes = ["$2a$", "$2b$", "$2x$", "$2y$"];
-        if !valid_prefixes.iter().any(|prefix| hash.starts_with(prefix)) {
+        if !VALID_BCRYPT_PREFIXES.iter().any(|prefix| hash.starts_with(prefix)) {
             return Err(HashedPasswordError::FormatNotValid {
-                algorithm: ALGORITHM.to_string(),
-                reason: format!("must start with one of: {}", valid_prefixes.join(", ")),
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
+                reason: format!("must start with one of: {}", VALID_BCRYPT_PREFIXES.join(", ")),
             });
         }
 
         let parts: Vec<&str> = hash.split('$').collect();
         if parts.len() != 4 {
             return Err(HashedPasswordError::FormatNotValid {
-                algorithm: ALGORITHM.to_string(),
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
                 reason: "must have format $2x$cost$salthash".to_string(),
             });
         }
 
         // Validate cost parameter (4-31)
-        if let Ok(cost) = parts[2].parse::<u32>() {
-            if !(4..=31).contains(&cost) {
-                return Err(HashedPasswordError::FormatNotValid {
-                    algorithm: ALGORITHM.to_string(),
-                    reason: format!("cost must be between 4 and 31, got {cost}"),
-                });
-            }
-        } else {
+        let cost = parts[2].parse::<u32>().map_err(|_| HashedPasswordError::FormatNotValid {
+            algorithm: HashingAlgorithm::Bcrypt.to_string(),
+            reason: "cost parameter must be a valid number".to_string(),
+        })?;
+
+        if !(4..=31).contains(&cost) {
             return Err(HashedPasswordError::FormatNotValid {
-                algorithm: ALGORITHM.to_string(),
-                reason: "cost parameter must be a valid number".to_string(),
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
+                reason: format!("cost must be between 4 and 31, got {cost}"),
             });
         }
 
         // Validate salt+hash (22 + 31 = 53 characters)
         if parts[3].len() != 53 {
             return Err(HashedPasswordError::LengthNotValid {
-                algorithm: ALGORITHM.to_string(),
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
                 expected: "53 (salt+hash)".to_string(),
                 actual: parts[3].len(),
             });
@@ -239,24 +239,17 @@ impl HashedPassword {
             .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '/')
         {
             return Err(HashedPasswordError::CharactersNotValid {
-                algorithm: ALGORITHM.to_string(),
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
             });
         }
 
         Ok(())
     }
 
-    /// Validates Argon2 hash format.
+    /// Validates an Argon2 hash format.
     ///
     /// Argon2 format: `$argon2[d/i/id]$v=19$m=X,t=Y,p=Z$salt$hash`
     fn validate_argon2(hash: &str, variant: ArgonVariant) -> Result<(), HashedPasswordError> {
-        // let algorithm = match variant {
-        //     "argon2d" => "Argon2d",
-        //     "argon2i" => "Argon2i",
-        //     "argon2id" => "Argon2id",
-        //     _ => "Argon2",
-        // };
-
         let expected_prefix = format!("${variant}$");
         if !hash.starts_with(&expected_prefix) {
             return Err(HashedPasswordError::FormatNotValid {
