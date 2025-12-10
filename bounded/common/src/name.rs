@@ -1,15 +1,10 @@
 use crate::{Validator, ValidatorError};
-use regex::Regex;
 use std::fmt;
 use std::ops::Deref;
-use std::sync::LazyLock;
 use thiserror::Error;
 
 const MAX_LENGTH: usize = 101;
 const MIN_LENGTH: usize = 2;
-
-static LATIN_NAME_REGEX: LazyLock<Result<Regex, regex::Error>> =
-    LazyLock::new(|| Regex::new(r"^[\p{L}\s'\-]+$"));
 
 /// Error type for `Name` validation failures.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -18,6 +13,12 @@ pub enum NameError {
     /// Validation error occurred during name validation.
     #[error("Name validation failed: {0}")]
     ValidationError(#[from] ValidatorError),
+
+    #[error("Name is empty")]
+    EmptyValue,
+
+    #[error("Name characters are not valid")]
+    CharactersNotValid,
 }
 
 /// Configuration for name validation rules.
@@ -217,8 +218,8 @@ impl Name {
         let trimmed = name.trim();
 
         Validator::is_not_empty(trimmed)?;
-        Validator::is_greater_than(trimmed, config.min_length)?;
-        Validator::is_less_than(trimmed, config.max_length)?;
+        Validator::has_min_length(trimmed, config.min_length)?;
+        Validator::has_max_length(trimmed, config.max_length)?;
         Self::is_valid_latin_name(trimmed)?;
 
         Ok(Self {
@@ -258,13 +259,16 @@ impl Name {
     /// assert!(Name::is_valid_latin_name("José@email").is_err());
     /// assert!(Name::is_valid_latin_name("Test$Name").is_err());
     /// ```
-    pub fn is_valid_latin_name(name: &str) -> Result<(), ValidatorError> {
-        let regex = LATIN_NAME_REGEX
-            .as_ref()
-            .map_err(|e| ValidatorError::RegexError(e.to_string()))?;
+    pub fn is_valid_latin_name(name: &str) -> Result<(), NameError> {
+        if name.is_empty() {
+            return Err(NameError::EmptyValue);
+        }
 
-        if !regex.is_match(name) {
-            return Err(ValidatorError::InvalidNameCharacters);
+        if !name
+            .chars()
+            .all(|c| c.is_alphabetic() || c == ' ' || c == '-' || c == '\'')
+        {
+            return Err(NameError::CharactersNotValid);
         }
 
         Ok(())
@@ -541,15 +545,15 @@ mod tests {
     fn test_invalid_latin_names_with_numbers() {
         assert!(matches!(
             Name::is_valid_latin_name("John123"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("María2"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("Test123Name"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
     }
 
@@ -557,27 +561,27 @@ mod tests {
     fn test_invalid_latin_names_with_special_characters() {
         assert!(matches!(
             Name::is_valid_latin_name("John@Doe"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("Test$Name"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("Name!"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("José#García"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("Test.Name"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
         assert!(matches!(
             Name::is_valid_latin_name("Name_Test"),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::CharactersNotValid)
         ));
     }
 
@@ -585,7 +589,7 @@ mod tests {
     fn test_invalid_latin_names_empty() {
         assert!(matches!(
             Name::is_valid_latin_name(""),
-            Err(ValidatorError::InvalidNameCharacters)
+            Err(NameError::EmptyValue)
         ));
     }
 }

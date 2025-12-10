@@ -63,7 +63,6 @@ impl GroupBySegment {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use education_platform_common::Entity;
 
     #[test]
     fn test_group_by_segment_with_multiple_segments() {

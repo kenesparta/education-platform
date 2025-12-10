@@ -18,6 +18,10 @@ version = "0.1.0"
 [[package]]
 name = "education-platform-auth"
 version = "0.1.0"
+dependencies = [
+ "education-platform-common",
+ "thiserror",
+]
 
 [[package]]
 name = "education-platform-common"

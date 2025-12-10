@@ -267,6 +267,7 @@ pub fn create_user(email: &str) -> Result<User, UserError> {
 - **Functions and methods**: `snake_case` (e.g., `is_valid_email`, `create_user`)
 - **Constants**: `SCREAMING_SNAKE_CASE` (e.g., `MAX_RETRIES`, `DEFAULT_TIMEOUT`)
 - **Static variables**: `SCREAMING_SNAKE_CASE` (e.g., `EMAIL_REGEX`)
+- **Error variants**: Use positive form `XNotValid` instead of negative form `InvalidX` (e.g., `FormatNotValid` instead of `InvalidFormat`, `CharactersNotValid` instead of `InvalidCharacters`)
 
 ### Code Organization
 

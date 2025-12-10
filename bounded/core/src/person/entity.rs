@@ -90,6 +90,30 @@ impl Person {
         })
     }
 
+    /// Returns the person's unique identifier.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::Person;
+    ///
+    /// let person = Person::new(
+    ///     "John".to_string(),
+    ///     None,
+    ///     "Doe".to_string(),
+    ///     None,
+    ///     "12345678-1".to_string()
+    /// ).unwrap();
+    ///
+    /// let id = person.id();
+    /// assert_eq!(id.to_string().len(), 26);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub const fn id(&self) -> Id {
+        self.id
+    }
+
     /// Returns a reference to the person's name.
     ///
     /// # Examples
