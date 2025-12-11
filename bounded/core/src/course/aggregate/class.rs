@@ -1,5 +1,6 @@
 use education_platform_common::{
-    Duration, Entity, Id, Index, IndexError, SimpleName, SimpleNameError, Url, UrlError,
+    Duration, Entity, Id, Index, IndexError, SimpleName, SimpleNameConfig, SimpleNameError, Url,
+    UrlError,
 };
 use thiserror::Error;
 
@@ -86,7 +87,7 @@ impl Class {
         video_url: String,
         index: usize,
     ) -> Result<Self, ClassError> {
-        let name = SimpleName::new(name)?;
+        let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
         let duration = Duration::from_seconds(duration_seconds);
         let video_url = Url::new(video_url)?;
         let index = Index::new(index);
@@ -308,6 +309,60 @@ mod tests {
 
             assert!(result.is_err());
             assert!(matches!(result, Err(ClassError::DurationIsZero)));
+        }
+
+        #[test]
+        fn test_new_with_name_too_short_returns_error() {
+            let result = Class::new(
+                "AB".to_string(),
+                3600,
+                "https://example.com/video.mp4".to_string(),
+                0,
+            );
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ClassError::NameError(_))));
+        }
+
+        #[test]
+        fn test_new_with_name_at_min_length() {
+            let result = Class::new(
+                "ABC".to_string(),
+                3600,
+                "https://example.com/video.mp4".to_string(),
+                0,
+            );
+
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap().name().as_str(), "ABC");
+        }
+
+        #[test]
+        fn test_new_with_name_too_long_returns_error() {
+            let long_name = "A".repeat(51);
+            let result = Class::new(
+                long_name,
+                3600,
+                "https://example.com/video.mp4".to_string(),
+                0,
+            );
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ClassError::NameError(_))));
+        }
+
+        #[test]
+        fn test_new_with_name_at_max_length() {
+            let max_name = "A".repeat(50);
+            let result = Class::new(
+                max_name.clone(),
+                3600,
+                "https://example.com/video.mp4".to_string(),
+                0,
+            );
+
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap().name().as_str(), max_name);
         }
     }
 
