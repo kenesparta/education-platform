@@ -279,6 +279,113 @@ pub fn create_user(email: &str) -> Result<User, UserError> {
 }
 ```
 
+#### LazyLock Regex Pattern
+
+**CRITICAL: Never use `.expect()` or `.unwrap()` in `LazyLock` initialization.**
+
+When using `LazyLock` for regex compilation or other fallible operations:
+
+- **Always** store `Result<T, E>` in the `LazyLock`, not the unwrapped value
+- **Never** use `.expect()` or `.unwrap()` during initialization
+- **Handle errors** at usage sites with proper error propagation
+
+**Reference Implementation Pattern** (from `bounded/common/src/document/dni.rs`):
+
+```rust
+use regex::Regex;
+use std::sync::LazyLock;
+
+// ✅ CORRECT: Store Result, handle errors at usage
+static DNI_REGEX: LazyLock<Result<Regex, regex::Error>> =
+    LazyLock::new(|| Regex::new(r"^\d{8}-([0-9]|[A-K])$"));
+
+pub fn validate_dni(dni: &str) -> Result<(), ValidatorError> {
+    let regex = DNI_REGEX
+        .as_ref()
+        .map_err(|e| ValidatorError::RegexError(e.to_string()))?;
+
+    if !regex.is_match(dni) {
+        return Err(ValidatorError::FormatNotValid);
+    }
+    Ok(())
+}
+```
+
+❌ **FORBIDDEN: Using .expect() in LazyLock**
+```rust
+// NEVER DO THIS - violates error handling standards
+static BAD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\d{8}$").expect("Invalid regex pattern")  // ❌ FORBIDDEN
+});
+```
+
+**Why This Pattern**:
+- Regex compilation can fail (invalid pattern)
+- `.expect()` causes panic at runtime (unrecoverable)
+- Storing `Result` allows proper error handling and recovery
+- Consistent with Rust's philosophy of explicit error handling
+
+#### Validation Functions Pattern
+
+**CRITICAL: Validation functions must return `Result<(), E>`, not `bool`.**
+
+When writing validation functions:
+
+- **Always** return `Result<(), ErrorType>` instead of `bool`
+- **Never** return `bool` from validation functions
+- **Provide** specific error information about what failed
+- **Enable** proper error propagation with the `?` operator
+
+✅ **CORRECT: Validation returns Result**
+```rust
+/// Validates that a URL follows proper HTTP/HTTPS format.
+pub fn is_valid_url(url: &str) -> Result<(), UrlError> {
+    if url.is_empty() {
+        return Err(UrlError::EmptyValue);
+    }
+
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(UrlError::StartWithHTTP);
+    }
+
+    Ok(())
+}
+
+// Usage with proper error handling
+fn process_url(url: &str) -> Result<(), UrlError> {
+    is_valid_url(url)?;  // Error propagates with context
+    // ... rest of processing
+    Ok(())
+}
+```
+
+❌ **FORBIDDEN: Validation returns bool**
+```rust
+// NEVER DO THIS - loses error information
+pub fn is_valid_url(url: &str) -> bool {
+    if url.is_empty() {
+        return false;  // ❌ WHY did it fail? Unknown!
+    }
+    // ...
+    true
+}
+
+// Usage loses error context
+fn process_url(url: &str) -> Result<(), UrlError> {
+    if !is_valid_url(url) {
+        return Err(UrlError::FormatNotValid);  // ❌ Generic, lost specific error
+    }
+    Ok(())
+}
+```
+
+**Why This Pattern**:
+- Preserves specific error information (empty vs wrong format vs wrong scheme)
+- Enables error propagation with `?` operator
+- Follows Rust idioms for fallible operations
+- Better developer experience with descriptive errors
+- Consistent with `Result`-based error handling throughout the codebase
+
 ### Naming Conventions
 
 - **Modules**: `snake_case` (e.g., `user_service`, `email_validator`)

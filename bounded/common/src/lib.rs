@@ -4,6 +4,7 @@ mod email;
 mod entity;
 mod id;
 mod name;
+mod order;
 mod password;
 mod person_name;
 mod simple_name;
