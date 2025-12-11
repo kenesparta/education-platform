@@ -1,17 +1,23 @@
 mod document;
+mod duration;
 mod email;
 mod entity;
 mod id;
 mod name;
 mod password;
 mod person_name;
+mod simple_name;
+mod url;
 mod validator;
 
 pub use document::*;
+pub use duration::*;
 pub use email::*;
 pub use entity::*;
 pub use id::*;
 pub use name::*;
 pub use password::*;
 pub use person_name::*;
+pub use simple_name::*;
+pub use url::*;
 pub use validator::*;
