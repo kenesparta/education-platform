@@ -67,7 +67,7 @@ impl fmt::Display for HashingAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bcrypt => write!(f, "bcrypt"),
-            Self::Argon(variant) => write!(f, "{}", variant.to_string()),
+            Self::Argon(variant) => write!(f, "{variant}"),
         }
     }
 }
@@ -196,10 +196,16 @@ impl HashedPassword {
             });
         }
 
-        if !VALID_BCRYPT_PREFIXES.iter().any(|prefix| hash.starts_with(prefix)) {
+        if !VALID_BCRYPT_PREFIXES
+            .iter()
+            .any(|prefix| hash.starts_with(prefix))
+        {
             return Err(HashedPasswordError::FormatNotValid {
                 algorithm: HashingAlgorithm::Bcrypt.to_string(),
-                reason: format!("must start with one of: {}", VALID_BCRYPT_PREFIXES.join(", ")),
+                reason: format!(
+                    "must start with one of: {}",
+                    VALID_BCRYPT_PREFIXES.join(", ")
+                ),
             });
         }
 
@@ -212,10 +218,12 @@ impl HashedPassword {
         }
 
         // Validate cost parameter (4-31)
-        let cost = parts[2].parse::<u32>().map_err(|_| HashedPasswordError::FormatNotValid {
-            algorithm: HashingAlgorithm::Bcrypt.to_string(),
-            reason: "cost parameter must be a valid number".to_string(),
-        })?;
+        let cost = parts[2]
+            .parse::<u32>()
+            .map_err(|_| HashedPasswordError::FormatNotValid {
+                algorithm: HashingAlgorithm::Bcrypt.to_string(),
+                reason: "cost parameter must be a valid number".to_string(),
+            })?;
 
         if !(4..=31).contains(&cost) {
             return Err(HashedPasswordError::FormatNotValid {

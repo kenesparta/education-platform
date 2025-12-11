@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Documentation requirements (examples, WHY not WHAT)
    - Naming conventions
    - Performance attributes (`#[inline]`, `#[must_use]`)
+   - Rust idioms (prefer `match` over `if-else` chains)
    - Testing standards
 
 3. **Quality Requirements**
@@ -215,6 +216,24 @@ cargo fmt
 cargo fmt -- --check
 ```
 
+### Rust Toolchain Requirements
+
+**CRITICAL: This project uses STABLE Rust only.**
+
+- **Toolchain**: Stable Rust channel (no nightly features)
+- **Edition**: 2024 (specified in all `Cargo.toml` files)
+- **Formatting**: `rustfmt.toml` contains ONLY stable features
+  - No unstable rustfmt options
+  - Configuration works with stable toolchain out of the box
+
+**Rationale**: Using stable Rust ensures:
+- Production reliability and stability
+- Consistent builds across environments
+- No breakage from nightly compiler changes
+- Better IDE support and tooling compatibility
+
+**Never** add nightly-only features or suggest switching to nightly unless explicitly requested by the user.
+
 ## Code Guidelines & Standards
 
 ### Error Handling Standards
@@ -275,6 +294,75 @@ pub fn create_user(email: &str) -> Result<User, UserError> {
 - **Small, focused modules**: Each module should have a single responsibility
 - **Public API**: Only expose what's necessary via `pub`
 - **Documentation**: Add doc comments (`///`) for all public items
+
+### Rust Idioms and Control Flow
+
+**CRITICAL: Prioritize `match` over `if-else` chains.**
+
+When you have conditional logic:
+- **Single `if`**: Acceptable and idiomatic
+- **`if-else` chains**: Evaluate whether `match` would be clearer
+
+#### When to Use `match`
+
+Use `match` for:
+1. **Multiple conditions** (if-else-if chains)
+2. **Pattern matching** on enums, tuples, or values
+3. **Exhaustiveness checking** (compiler ensures all cases covered)
+4. **Complex conditionals** that benefit from explicit patterns
+
+#### Examples
+
+❌ **Avoid: if-else chains**
+```rust
+pub fn format_hours(&self) -> String {
+    let h = self.hours();
+    let m = self.minutes();
+    let s = self.seconds();
+
+    if h == 0 {
+        format!("{:02}m {:02}s", m, s)
+    } else if m == 0 && s == 0 {
+        format!("{:02}h", h)
+    } else {
+        format!("{:02}h {:02}m {:02}s", h, m, s)
+    }
+}
+```
+
+✅ **Prefer: match expressions**
+```rust
+pub fn format_hours(&self) -> String {
+    let h = self.hours();
+    let m = self.minutes();
+    let s = self.seconds();
+
+    match (h, m, s) {
+        (0, m, s) => format!("{:02}m {:02}s", m, s),
+        (h, 0, 0) => format!("{:02}h", h),
+        (h, m, 0) => format!("{:02}h {:02}m", h, m),
+        (h, m, s) => format!("{:02}h {:02}m {:02}s", h, m, s),
+    }
+}
+```
+
+**Benefits of `match`:**
+- All cases visible at once (better readability)
+- Exhaustiveness checking (compiler warns if cases missing)
+- Easier to extend with new patterns
+- More idiomatic Rust
+- Pattern destructuring makes intent clear
+
+✅ **Single `if` is fine:**
+```rust
+if user.is_admin() {
+    grant_access();
+}
+
+if value > MAX_THRESHOLD {
+    return Err(ValidationError::TooLarge);
+}
+```
 
 ### Documentation Standards
 

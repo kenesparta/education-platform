@@ -1,0 +1,68 @@
+# Rustfmt Configuration for Education Platform
+#
+# STABLE ONLY: This configuration uses only stable Rust features.
+# Run with: cargo fmt --all
+
+# ============================================================================
+# Edition and Basic Settings
+# ============================================================================
+
+edition = "2024"
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+
+# ============================================================================
+# Code Style (Stable Features)
+# ============================================================================
+
+# Use field init shorthand (e.g., `MyStruct { x }` instead of `MyStruct { x: x }`)
+use_field_init_shorthand = true
+
+# Simplify `use` statements with `self`, `super`, or `crate`
+use_try_shorthand = true
+
+# Merge derives into single line when possible
+merge_derives = true
+
+# Remove nested parentheses when possible
+remove_nested_parens = true
+
+# ============================================================================
+# Import Organization
+# ============================================================================
+
+# Reorder imports alphabetically
+reorder_imports = true
+
+# Reorder module declarations alphabetically
+reorder_modules = true
+
+# ============================================================================
+# Function and Type Formatting
+# ============================================================================
+
+# Function parameter layout
+fn_params_layout = "Tall"
+fn_call_width = 60
+
+# Struct literal formatting
+struct_lit_width = 18
+struct_variant_width = 35
+
+# ============================================================================
+# Chains and Control Flow
+# ============================================================================
+
+# Method chain width
+chain_width = 60
+
+# Single-line if-else maximum width
+single_line_if_else_max_width = 50
+
+# ============================================================================
+# Miscellaneous
+# ============================================================================
+
+# Newline style (Auto detects based on existing files)
+newline_style = "Auto"
