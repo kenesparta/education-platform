@@ -88,14 +88,14 @@ impl Class {
         video_url: String,
         index: usize,
     ) -> Result<Self, ClassError> {
-        let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
         let duration = Duration::from_seconds(duration_seconds);
-        let video_url = Url::new(video_url)?;
-        let index = Index::new(index);
-
         if duration.is_zero() {
             return Err(ClassError::DurationIsZero);
         }
+
+        let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
+        let video_url = Url::new(video_url)?;
+        let index = Index::new(index);
 
         Ok(Self {
             id: Id::new(),
