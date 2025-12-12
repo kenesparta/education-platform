@@ -13,6 +13,9 @@ pub enum ChapterError {
 
     #[error("Chapter must have at least one class")]
     ChapterWithEmptyClasses,
+
+    #[error("Class does not exist")]
+    ClassDoesNotExist,
 }
 
 /// A chapter within a course, containing multiple classes.
@@ -337,6 +340,284 @@ impl Chapter {
         self.classes
             .last()
             .ok_or(ChapterError::ChapterWithEmptyClasses)
+    }
+
+    /// Adds a class to this chapter and returns a new `Chapter` instance.
+    ///
+    /// If `index` is `None`, the class is appended at the end. If `index` is
+    /// `Some`, the class is inserted at that position and subsequent classes
+    /// are shifted. After insertion, all classes are reindexed sequentially.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ChapterWithEmptyClasses` if reindexing fails
+    /// (should not occur in practice).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Class};
+    /// use education_platform_common::Index;
+    ///
+    /// let class1 = Class::new(
+    ///     "First".to_string(),
+    ///     600,
+    ///     "https://example.com/1.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let chapter = Chapter::new("My Chapter".to_string(), 0, vec![class1]).unwrap();
+    ///
+    /// let new_class = Class::new(
+    ///     "Second".to_string(),
+    ///     600,
+    ///     "https://example.com/2.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let updated = chapter.add_class(new_class, None).unwrap();
+    /// assert_eq!(updated.classes().len(), 2);
+    /// assert_eq!(updated.classes()[1].name().as_str(), "Second");
+    /// ```
+    pub fn add_class(&self, class: Class, index: Option<Index>) -> Result<Chapter, ChapterError> {
+        let mut classes = self.classes.clone();
+
+        match index {
+            Some(idx) => {
+                let position = idx.value().min(classes.len());
+                classes.insert(position, class);
+            }
+            None => {
+                classes.push(class);
+            }
+        }
+
+        Ok(Chapter {
+            id: self.id,
+            name: self.name.clone(),
+            index: self.index,
+            classes: Self::reassign_index_classes(&classes)?,
+        })
+    }
+
+    /// Removes a class from this chapter and returns a new `Chapter` instance.
+    ///
+    /// The class is identified by its ID. After removal, all remaining classes
+    /// are reindexed sequentially starting from 0.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ChapterWithEmptyClasses` if removing the class
+    /// would result in an empty chapter (a chapter must have at least one class).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Class};
+    ///
+    /// let class1 = Class::new(
+    ///     "First".to_string(),
+    ///     600,
+    ///     "https://example.com/1.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let class2 = Class::new(
+    ///     "Second".to_string(),
+    ///     600,
+    ///     "https://example.com/2.mp4".to_string(),
+    ///     1,
+    /// ).unwrap();
+    ///
+    /// let chapter = Chapter::new(
+    ///     "My Chapter".to_string(),
+    ///     0,
+    ///     vec![class1.clone(), class2],
+    /// ).unwrap();
+    ///
+    /// let updated = chapter.delete_class(&class1).unwrap();
+    /// assert_eq!(updated.classes().len(), 1);
+    /// assert_eq!(updated.classes()[0].name().as_str(), "Second");
+    /// ```
+    pub fn delete_class(&self, class: &Class) -> Result<Chapter, ChapterError> {
+        let classes: Vec<Class> = self
+            .classes
+            .iter()
+            .filter(|c| c.id() != class.id())
+            .cloned()
+            .collect();
+
+        Ok(Chapter {
+            id: self.id,
+            name: self.name.clone(),
+            index: self.index,
+            classes: Self::reassign_index_classes(&classes)?,
+        })
+    }
+
+    /// Moves a class to a new position within this chapter.
+    ///
+    /// The class is identified by its ID. If found, it is removed from its
+    /// current position and inserted at the specified index. After moving,
+    /// all classes are reindexed sequentially starting from 0.
+    ///
+    /// If the class is not found in the chapter, the original chapter is
+    /// returned unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ChapterWithEmptyClasses` if the chapter has only
+    /// one class (cannot temporarily remove it during the move operation).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Class};
+    /// use education_platform_common::Index;
+    ///
+    /// let class1 = Class::new(
+    ///     "First".to_string(),
+    ///     600,
+    ///     "https://example.com/1.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let class2 = Class::new(
+    ///     "Second".to_string(),
+    ///     600,
+    ///     "https://example.com/2.mp4".to_string(),
+    ///     1,
+    /// ).unwrap();
+    ///
+    /// let chapter = Chapter::new(
+    ///     "My Chapter".to_string(),
+    ///     0,
+    ///     vec![class1.clone(), class2],
+    /// ).unwrap();
+    ///
+    /// let updated = chapter.move_class(&class1, Index::new(1)).unwrap();
+    /// assert_eq!(updated.classes()[0].name().as_str(), "Second");
+    /// assert_eq!(updated.classes()[1].name().as_str(), "First");
+    /// ```
+    pub fn move_class(&self, class: &Class, to_index: Index) -> Result<Chapter, ChapterError> {
+        self.delete_class(class)?
+            .add_class(class.clone(), Some(to_index))
+    }
+
+    /// Moves a class one position up (toward index 0) within this chapter.
+    ///
+    /// If the class is already at index 0 (first position), it cannot be moved
+    /// up further, so the original chapter is returned unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ChapterWithEmptyClasses` if the chapter has only
+    /// one class (cannot perform move operation on single-class chapters).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Class};
+    ///
+    /// let class1 = Class::new(
+    ///     "First".to_string(),
+    ///     600,
+    ///     "https://example.com/1.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let class2 = Class::new(
+    ///     "Second".to_string(),
+    ///     600,
+    ///     "https://example.com/2.mp4".to_string(),
+    ///     1,
+    /// ).unwrap();
+    ///
+    /// let chapter = Chapter::new(
+    ///     "My Chapter".to_string(),
+    ///     0,
+    ///     vec![class1, class2.clone()],
+    /// ).unwrap();
+    ///
+    /// let updated = chapter.move_class_up(&class2).unwrap();
+    /// assert_eq!(updated.classes()[0].name().as_str(), "Second");
+    /// assert_eq!(updated.classes()[1].name().as_str(), "First");
+    /// ```
+    pub fn move_class_up(&self, class: &Class) -> Result<Chapter, ChapterError> {
+        let current_position = self
+            .classes
+            .iter()
+            .position(|c| c.id() == class.id())
+            .ok_or(ChapterError::ClassDoesNotExist)?;
+
+        if current_position == 0 {
+            return Ok(Chapter {
+                id: self.id,
+                name: self.name.clone(),
+                index: self.index,
+                classes: self.classes.clone(),
+            });
+        }
+
+        self.move_class(class, Index::new(current_position - 1))
+    }
+
+    /// Moves a class one position down (toward the last index) within this chapter.
+    ///
+    /// If the class is already at the last position, it cannot be moved
+    /// down further, so the original chapter is returned unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ClassDoesNotExist` if the class is not found in
+    /// the chapter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Class};
+    ///
+    /// let class1 = Class::new(
+    ///     "First".to_string(),
+    ///     600,
+    ///     "https://example.com/1.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let class2 = Class::new(
+    ///     "Second".to_string(),
+    ///     600,
+    ///     "https://example.com/2.mp4".to_string(),
+    ///     1,
+    /// ).unwrap();
+    ///
+    /// let chapter = Chapter::new(
+    ///     "My Chapter".to_string(),
+    ///     0,
+    ///     vec![class1.clone(), class2],
+    /// ).unwrap();
+    ///
+    /// let updated = chapter.move_class_down(&class1).unwrap();
+    /// assert_eq!(updated.classes()[0].name().as_str(), "Second");
+    /// assert_eq!(updated.classes()[1].name().as_str(), "First");
+    /// ```
+    pub fn move_class_down(&self, class: &Class) -> Result<Chapter, ChapterError> {
+        let current_position = self
+            .classes
+            .iter()
+            .position(|c| c.id() == class.id())
+            .ok_or(ChapterError::ClassDoesNotExist)?;
+
+        if current_position >= self.classes.len() - 1 {
+            return Ok(Chapter {
+                id: self.id,
+                name: self.name.clone(),
+                index: self.index,
+                classes: self.classes.clone(),
+            });
+        }
+
+        self.move_class(class, Index::new(current_position + 1))
     }
 
     /// Reassigns indices to classes based on their position in the vector.
@@ -1152,6 +1433,1247 @@ mod tests {
             assert_eq!(ordered[1].name().as_str(), "Second");
             assert_eq!(ordered[2].name().as_str(), "Third");
             assert_eq!(ordered[3].name().as_str(), "Last");
+        }
+    }
+
+    mod add_class {
+        use super::*;
+
+        #[test]
+        fn test_add_class_appends_at_end_when_index_is_none() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_add_class_inserts_at_beginning_with_index_zero() {
+            let class = create_test_class("Second", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let new_class = create_test_class("First", 0);
+            let updated = chapter.add_class(new_class, Some(Index::new(0))).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_add_class_inserts_at_middle() {
+            let classes = vec![create_test_class("First", 0), create_test_class("Third", 1)];
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, classes).unwrap();
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, Some(Index::new(1))).unwrap();
+
+            assert_eq!(updated.classes().len(), 3);
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+            assert_eq!(updated.classes()[2].name().as_str(), "Third");
+        }
+
+        #[test]
+        fn test_add_class_reassigns_indices_sequentially() {
+            let classes = vec![
+                create_test_class("First", 0),
+                create_test_class("Second", 1),
+            ];
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, classes).unwrap();
+
+            let new_class = create_test_class("New", 99);
+            let updated = chapter.add_class(new_class, Some(Index::new(1))).unwrap();
+
+            assert_eq!(updated.classes()[0].index().value(), 0);
+            assert_eq!(updated.classes()[1].index().value(), 1);
+            assert_eq!(updated.classes()[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_add_class_preserves_chapter_id() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+            let original_id = chapter.id();
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(updated.id(), original_id);
+        }
+
+        #[test]
+        fn test_add_class_preserves_chapter_name() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("My Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(updated.name().as_str(), "My Chapter");
+        }
+
+        #[test]
+        fn test_add_class_preserves_chapter_index() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 5, vec![class]).unwrap();
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(updated.index().value(), 5);
+        }
+
+        #[test]
+        fn test_add_class_does_not_modify_original() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let new_class = create_test_class("Second", 0);
+            let _ = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(chapter.classes().len(), 1);
+            assert_eq!(chapter.classes()[0].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_add_class_with_index_beyond_length_appends_at_end() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, Some(Index::new(100))).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].index().value(), 1);
+        }
+
+        #[test]
+        fn test_add_class_preserves_existing_class_ids() {
+            let classes = vec![
+                create_test_class("First", 0),
+                create_test_class("Second", 1),
+            ];
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, classes).unwrap();
+            let original_ids: Vec<_> = chapter.classes().iter().map(|c| c.id()).collect();
+
+            let new_class = create_test_class("New", 0);
+            let updated = chapter.add_class(new_class, Some(Index::new(1))).unwrap();
+
+            assert_eq!(updated.classes()[0].id(), original_ids[0]);
+            assert_eq!(updated.classes()[2].id(), original_ids[1]);
+        }
+
+        #[test]
+        fn test_add_class_multiple_times() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let chapter = chapter
+                .add_class(create_test_class("Second", 0), None)
+                .unwrap();
+            let chapter = chapter
+                .add_class(create_test_class("Third", 0), None)
+                .unwrap();
+            let chapter = chapter
+                .add_class(create_test_class("Fourth", 0), None)
+                .unwrap();
+
+            assert_eq!(chapter.classes().len(), 4);
+            assert_eq!(chapter.classes()[0].name().as_str(), "First");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Second");
+            assert_eq!(chapter.classes()[2].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[3].name().as_str(), "Fourth");
+        }
+
+        #[test]
+        fn test_add_class_at_last_position() {
+            let classes = vec![
+                create_test_class("First", 0),
+                create_test_class("Second", 1),
+            ];
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, classes).unwrap();
+
+            let new_class = create_test_class("Third", 0);
+            let updated = chapter.add_class(new_class, Some(Index::new(2))).unwrap();
+
+            assert_eq!(updated.classes().len(), 3);
+            assert_eq!(updated.classes()[2].name().as_str(), "Third");
+            assert_eq!(updated.classes()[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_add_class_updates_total_duration() {
+            let class = Class::new(
+                "First".to_string(),
+                1800,
+                "https://example.com/1.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            let new_class = Class::new(
+                "Second".to_string(),
+                1200,
+                "https://example.com/2.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let updated = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(updated.total_duration().total_seconds(), 3000);
+        }
+
+        #[test]
+        fn test_add_class_updates_class_quantity() {
+            let class = create_test_class("First", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class]).unwrap();
+
+            assert_eq!(chapter.class_quantity(), 1);
+
+            let new_class = create_test_class("Second", 0);
+            let updated = chapter.add_class(new_class, None).unwrap();
+
+            assert_eq!(updated.class_quantity(), 2);
+        }
+    }
+
+    mod remove_class {
+        use super::*;
+
+        #[test]
+        fn test_remove_class_removes_by_id() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class1_id = class1.id();
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.classes().len(), 1);
+            assert_ne!(updated.classes()[0].id(), class1_id);
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_remove_class_reassigns_indices() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2.clone(), class3],
+            )
+            .unwrap();
+
+            let updated = chapter.delete_class(&class2).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+            assert_eq!(updated.classes()[0].index().value(), 0);
+            assert_eq!(updated.classes()[1].index().value(), 1);
+        }
+
+        #[test]
+        fn test_remove_class_from_beginning() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[0].index().value(), 0);
+            assert_eq!(updated.classes()[1].name().as_str(), "Third");
+            assert_eq!(updated.classes()[1].index().value(), 1);
+        }
+
+        #[test]
+        fn test_remove_class_from_end() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2, class3.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.delete_class(&class3).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_remove_class_returns_error_when_last_class() {
+            let class = create_test_class("Only Class", 0);
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class.clone()]).unwrap();
+
+            let result = chapter.delete_class(&class);
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ChapterError::ChapterWithEmptyClasses)));
+        }
+
+        #[test]
+        fn test_remove_class_preserves_chapter_id() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+            let original_id = chapter.id();
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.id(), original_id);
+        }
+
+        #[test]
+        fn test_remove_class_preserves_chapter_name() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("My Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.name().as_str(), "My Chapter");
+        }
+
+        #[test]
+        fn test_remove_class_preserves_chapter_index() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 5, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.index().value(), 5);
+        }
+
+        #[test]
+        fn test_remove_class_does_not_modify_original() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let _ = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(chapter.classes().len(), 2);
+        }
+
+        #[test]
+        fn test_remove_class_nonexistent_class_returns_same_classes() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let nonexistent = create_test_class("Nonexistent", 99);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2]).unwrap();
+
+            let updated = chapter.delete_class(&nonexistent).unwrap();
+
+            assert_eq!(updated.classes().len(), 2);
+        }
+
+        #[test]
+        fn test_remove_class_preserves_remaining_class_ids() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2.clone(), class3],
+            )
+            .unwrap();
+
+            let original_ids: Vec<_> = chapter
+                .classes()
+                .iter()
+                .filter(|c| c.id() != class2.id())
+                .map(|c| c.id())
+                .collect();
+
+            let updated = chapter.delete_class(&class2).unwrap();
+
+            assert_eq!(updated.classes()[0].id(), original_ids[0]);
+            assert_eq!(updated.classes()[1].id(), original_ids[1]);
+        }
+
+        #[test]
+        fn test_remove_class_updates_total_duration() {
+            let class1 = Class::new(
+                "First".to_string(),
+                1800,
+                "https://example.com/1.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let class2 = Class::new(
+                "Second".to_string(),
+                1200,
+                "https://example.com/2.mp4".to_string(),
+                1,
+            )
+            .unwrap();
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            assert_eq!(chapter.total_duration().total_seconds(), 3000);
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.total_duration().total_seconds(), 1200);
+        }
+
+        #[test]
+        fn test_remove_class_updates_class_quantity() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            assert_eq!(chapter.class_quantity(), 3);
+
+            let updated = chapter.delete_class(&class1).unwrap();
+
+            assert_eq!(updated.class_quantity(), 2);
+        }
+
+        #[test]
+        fn test_remove_class_multiple_times() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone(), class3],
+            )
+            .unwrap();
+
+            let chapter = chapter.delete_class(&class1).unwrap();
+            assert_eq!(chapter.classes().len(), 2);
+
+            let chapter = chapter.delete_class(&class2).unwrap();
+            assert_eq!(chapter.classes().len(), 1);
+            assert_eq!(chapter.classes()[0].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[0].index().value(), 0);
+        }
+    }
+
+    mod move_class {
+        use super::*;
+
+        #[test]
+        fn test_move_class_to_end() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(2)).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].name().as_str(), "Third");
+            assert_eq!(updated.classes()[2].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_move_class_to_beginning() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2, class3.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class3, Index::new(0)).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Third");
+            assert_eq!(updated.classes()[1].name().as_str(), "First");
+            assert_eq!(updated.classes()[2].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_to_middle() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(1)).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].name().as_str(), "First");
+            assert_eq!(updated.classes()[2].name().as_str(), "Third");
+        }
+
+        #[test]
+        fn test_move_class_reassigns_indices() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(2)).unwrap();
+
+            assert_eq!(updated.classes()[0].index().value(), 0);
+            assert_eq!(updated.classes()[1].index().value(), 1);
+            assert_eq!(updated.classes()[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_move_class_preserves_chapter_id() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+            let original_id = chapter.id();
+
+            let updated = chapter.move_class(&class1, Index::new(1)).unwrap();
+
+            assert_eq!(updated.id(), original_id);
+        }
+
+        #[test]
+        fn test_move_class_preserves_chapter_name() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("My Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(1)).unwrap();
+
+            assert_eq!(updated.name().as_str(), "My Chapter");
+        }
+
+        #[test]
+        fn test_move_class_preserves_chapter_index() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 5, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(1)).unwrap();
+
+            assert_eq!(updated.index().value(), 5);
+        }
+
+        #[test]
+        fn test_move_class_does_not_modify_original() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let _ = chapter.move_class(&class1, Index::new(1)).unwrap();
+
+            assert_eq!(chapter.classes()[0].name().as_str(), "First");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_preserves_class_count() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(2)).unwrap();
+
+            assert_eq!(updated.classes().len(), 3);
+        }
+
+        #[test]
+        fn test_move_class_preserves_class_ids() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone(), class3.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(2)).unwrap();
+
+            assert_eq!(updated.classes()[0].id(), class2.id());
+            assert_eq!(updated.classes()[1].id(), class3.id());
+            assert_eq!(updated.classes()[2].id(), class1.id());
+        }
+
+        #[test]
+        fn test_move_class_with_index_beyond_length() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(100)).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_move_class_single_class_returns_error() {
+            let class = create_test_class("Only Class", 0);
+
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class.clone()]).unwrap();
+
+            let result = chapter.move_class(&class, Index::new(0));
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ChapterError::ChapterWithEmptyClasses)));
+        }
+
+        #[test]
+        fn test_move_class_preserves_total_duration() {
+            let class1 = Class::new(
+                "First".to_string(),
+                1800,
+                "https://example.com/1.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let class2 = Class::new(
+                "Second".to_string(),
+                1200,
+                "https://example.com/2.mp4".to_string(),
+                1,
+            )
+            .unwrap();
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class(&class1, Index::new(1)).unwrap();
+
+            assert_eq!(updated.total_duration().total_seconds(), 3000);
+        }
+
+        #[test]
+        fn test_move_class_multiple_times() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone(), class3.clone()],
+            )
+            .unwrap();
+
+            let chapter = chapter.move_class(&class1, Index::new(2)).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Second");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[2].name().as_str(), "First");
+
+            let chapter = chapter.move_class(&class3, Index::new(0)).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Second");
+            assert_eq!(chapter.classes()[2].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_move_class_to_same_position() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2.clone(), class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class(&class2, Index::new(1)).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+            assert_eq!(updated.classes()[2].name().as_str(), "Third");
+        }
+    }
+
+    mod move_class_up {
+        use super::*;
+
+        #[test]
+        fn test_move_class_up_from_second_to_first() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2.clone()]).unwrap();
+
+            let updated = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_move_class_up_from_third_to_second() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2, class3.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_up(&class3).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Third");
+            assert_eq!(updated.classes()[2].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_up_already_at_first_position_returns_unchanged() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class_up(&class1).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_up_nonexistent_class_returns_error() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let nonexistent = create_test_class("Nonexistent", 99);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2]).unwrap();
+
+            let result = chapter.move_class_up(&nonexistent);
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ChapterError::ClassDoesNotExist)));
+        }
+
+        #[test]
+        fn test_move_class_up_single_class_returns_error() {
+            let class = create_test_class("Only Class", 0);
+
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class.clone()]).unwrap();
+
+            let result = chapter.move_class_up(&class);
+
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_move_class_up_reassigns_indices() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2, class3.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_up(&class3).unwrap();
+
+            assert_eq!(updated.classes()[0].index().value(), 0);
+            assert_eq!(updated.classes()[1].index().value(), 1);
+            assert_eq!(updated.classes()[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_move_class_up_preserves_chapter_id() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2.clone()]).unwrap();
+            let original_id = chapter.id();
+
+            let updated = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(updated.id(), original_id);
+        }
+
+        #[test]
+        fn test_move_class_up_preserves_chapter_name() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("My Chapter".to_string(), 0, vec![class1, class2.clone()]).unwrap();
+
+            let updated = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(updated.name().as_str(), "My Chapter");
+        }
+
+        #[test]
+        fn test_move_class_up_preserves_chapter_index() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 5, vec![class1, class2.clone()]).unwrap();
+
+            let updated = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(updated.index().value(), 5);
+        }
+
+        #[test]
+        fn test_move_class_up_does_not_modify_original() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2.clone()]).unwrap();
+
+            let _ = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(chapter.classes()[0].name().as_str(), "First");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_up_preserves_class_count() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2, class3.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_up(&class3).unwrap();
+
+            assert_eq!(updated.classes().len(), 3);
+        }
+
+        #[test]
+        fn test_move_class_up_preserves_class_ids() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(updated.classes()[0].id(), class2.id());
+            assert_eq!(updated.classes()[1].id(), class1.id());
+        }
+
+        #[test]
+        fn test_move_class_up_multiple_times() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone(), class3.clone()],
+            )
+            .unwrap();
+
+            let chapter = chapter.move_class_up(&class3).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "First");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[2].name().as_str(), "Second");
+
+            let chapter = chapter.move_class_up(&class3).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[1].name().as_str(), "First");
+            assert_eq!(chapter.classes()[2].name().as_str(), "Second");
+
+            let chapter = chapter.move_class_up(&class3).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[1].name().as_str(), "First");
+            assert_eq!(chapter.classes()[2].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_up_preserves_total_duration() {
+            let class1 = Class::new(
+                "First".to_string(),
+                1800,
+                "https://example.com/1.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let class2 = Class::new(
+                "Second".to_string(),
+                1200,
+                "https://example.com/2.mp4".to_string(),
+                1,
+            )
+            .unwrap();
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2.clone()]).unwrap();
+
+            let updated = chapter.move_class_up(&class2).unwrap();
+
+            assert_eq!(updated.total_duration().total_seconds(), 3000);
+        }
+    }
+
+    mod move_class_down {
+        use super::*;
+
+        #[test]
+        fn test_move_class_down_from_first_to_second() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_move_class_down_from_first_to_second_in_three_classes() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "Second");
+            assert_eq!(updated.classes()[1].name().as_str(), "First");
+            assert_eq!(updated.classes()[2].name().as_str(), "Third");
+        }
+
+        #[test]
+        fn test_move_class_down_already_at_last_position_returns_unchanged() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2.clone()]).unwrap();
+
+            let updated = chapter.move_class_down(&class2).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_down_nonexistent_class_returns_error() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let nonexistent = create_test_class("Nonexistent", 99);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1, class2]).unwrap();
+
+            let result = chapter.move_class_down(&nonexistent);
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ChapterError::ClassDoesNotExist)));
+        }
+
+        #[test]
+        fn test_move_class_down_single_class_returns_unchanged() {
+            let class = create_test_class("Only Class", 0);
+
+            let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![class.clone()]).unwrap();
+
+            let updated = chapter.move_class_down(&class).unwrap();
+
+            assert_eq!(updated.classes().len(), 1);
+            assert_eq!(updated.classes()[0].name().as_str(), "Only Class");
+        }
+
+        #[test]
+        fn test_move_class_down_reassigns_indices() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.classes()[0].index().value(), 0);
+            assert_eq!(updated.classes()[1].index().value(), 1);
+            assert_eq!(updated.classes()[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_move_class_down_preserves_chapter_id() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+            let original_id = chapter.id();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.id(), original_id);
+        }
+
+        #[test]
+        fn test_move_class_down_preserves_chapter_name() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("My Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.name().as_str(), "My Chapter");
+        }
+
+        #[test]
+        fn test_move_class_down_preserves_chapter_index() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 5, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.index().value(), 5);
+        }
+
+        #[test]
+        fn test_move_class_down_does_not_modify_original() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let _ = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(chapter.classes()[0].name().as_str(), "First");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Second");
+        }
+
+        #[test]
+        fn test_move_class_down_preserves_class_count() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2, class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.classes().len(), 3);
+        }
+
+        #[test]
+        fn test_move_class_down_preserves_class_ids() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone()],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.classes()[0].id(), class2.id());
+            assert_eq!(updated.classes()[1].id(), class1.id());
+        }
+
+        #[test]
+        fn test_move_class_down_multiple_times() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1.clone(), class2.clone(), class3.clone()],
+            )
+            .unwrap();
+
+            let chapter = chapter.move_class_down(&class1).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Second");
+            assert_eq!(chapter.classes()[1].name().as_str(), "First");
+            assert_eq!(chapter.classes()[2].name().as_str(), "Third");
+
+            let chapter = chapter.move_class_down(&class1).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Second");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[2].name().as_str(), "First");
+
+            // Already at last position, should remain unchanged
+            let chapter = chapter.move_class_down(&class1).unwrap();
+            assert_eq!(chapter.classes()[0].name().as_str(), "Second");
+            assert_eq!(chapter.classes()[1].name().as_str(), "Third");
+            assert_eq!(chapter.classes()[2].name().as_str(), "First");
+        }
+
+        #[test]
+        fn test_move_class_down_preserves_total_duration() {
+            let class1 = Class::new(
+                "First".to_string(),
+                1800,
+                "https://example.com/1.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let class2 = Class::new(
+                "Second".to_string(),
+                1200,
+                "https://example.com/2.mp4".to_string(),
+                1,
+            )
+            .unwrap();
+
+            let chapter =
+                Chapter::new("Test Chapter".to_string(), 0, vec![class1.clone(), class2]).unwrap();
+
+            let updated = chapter.move_class_down(&class1).unwrap();
+
+            assert_eq!(updated.total_duration().total_seconds(), 3000);
+        }
+
+        #[test]
+        fn test_move_class_down_from_middle() {
+            let class1 = create_test_class("First", 0);
+            let class2 = create_test_class("Second", 1);
+            let class3 = create_test_class("Third", 2);
+
+            let chapter = Chapter::new(
+                "Test Chapter".to_string(),
+                0,
+                vec![class1, class2.clone(), class3],
+            )
+            .unwrap();
+
+            let updated = chapter.move_class_down(&class2).unwrap();
+
+            assert_eq!(updated.classes()[0].name().as_str(), "First");
+            assert_eq!(updated.classes()[1].name().as_str(), "Third");
+            assert_eq!(updated.classes()[2].name().as_str(), "Second");
         }
     }
 }
