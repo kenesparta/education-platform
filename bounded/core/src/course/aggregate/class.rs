@@ -96,9 +96,10 @@ impl Class {
         let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
         let video_url = Url::new(video_url)?;
         let index = Index::new(index);
+        let id = Id::default();
 
         Ok(Self {
-            id: Id::new(),
+            id,
             name,
             duration,
             video_url,
