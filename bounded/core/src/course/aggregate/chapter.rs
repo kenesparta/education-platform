@@ -85,14 +85,12 @@ impl Chapter {
     /// ```
     pub fn new(name: String, index: usize, classes: Vec<Class>) -> Result<Self, ChapterError> {
         let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
+        let classes = Self::order_classes(classes)?;
         let index = Index::new(index);
-
-        if classes.is_empty() {
-            return Err(ChapterError::ChapterWithEmptyClasses);
-        }
+        let id = Id::default();
 
         Ok(Self {
-            id: Id::new(),
+            id,
             name,
             index,
             classes,
@@ -381,6 +379,45 @@ impl Chapter {
                 cloned
             })
             .collect())
+    }
+
+    /// Orders classes by their index and reassigns sequential indices.
+    ///
+    /// Takes a collection of classes, sorts them by their current index value,
+    /// then reassigns indices sequentially starting from 0. This ensures classes
+    /// are both ordered and have contiguous indices.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ChapterWithEmptyClasses` if the classes vector is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Class};
+    ///
+    /// let classes = vec![
+    ///     Class::new("Third".to_string(), 600, "https://example.com/3.mp4".to_string(), 10).unwrap(),
+    ///     Class::new("First".to_string(), 600, "https://example.com/1.mp4".to_string(), 2).unwrap(),
+    ///     Class::new("Second".to_string(), 600, "https://example.com/2.mp4".to_string(), 5).unwrap(),
+    /// ];
+    ///
+    /// let ordered = Chapter::order_classes(classes).unwrap();
+    ///
+    /// assert_eq!(ordered[0].name().as_str(), "First");
+    /// assert_eq!(ordered[0].index().value(), 0);
+    /// assert_eq!(ordered[1].name().as_str(), "Second");
+    /// assert_eq!(ordered[1].index().value(), 1);
+    /// assert_eq!(ordered[2].name().as_str(), "Third");
+    /// assert_eq!(ordered[2].index().value(), 2);
+    /// ```
+    pub fn order_classes(mut classes: Vec<Class>) -> Result<Vec<Class>, ChapterError> {
+        if classes.is_empty() {
+            return Err(ChapterError::ChapterWithEmptyClasses);
+        }
+
+        classes.sort_by_key(|class| class.index().value());
+        Self::reassign_index_classes(&classes)
     }
 }
 
@@ -978,6 +1015,143 @@ mod tests {
 
             assert_eq!(classes[0].index().value(), 5);
             assert_eq!(classes[1].index().value(), 10);
+        }
+    }
+
+    mod order_classes {
+        use super::*;
+
+        #[test]
+        fn test_order_classes_sorts_by_index() {
+            let classes = vec![
+                create_test_class("Third", 10),
+                create_test_class("First", 2),
+                create_test_class("Second", 5),
+            ];
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered[0].name().as_str(), "First");
+            assert_eq!(ordered[1].name().as_str(), "Second");
+            assert_eq!(ordered[2].name().as_str(), "Third");
+        }
+
+        #[test]
+        fn test_order_classes_reassigns_indices() {
+            let classes = vec![
+                create_test_class("Third", 100),
+                create_test_class("First", 5),
+                create_test_class("Second", 50),
+            ];
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered[0].index().value(), 0);
+            assert_eq!(ordered[1].index().value(), 1);
+            assert_eq!(ordered[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_order_classes_empty_returns_error() {
+            let classes: Vec<Class> = vec![];
+
+            let result = Chapter::order_classes(classes);
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ChapterError::ChapterWithEmptyClasses)));
+        }
+
+        #[test]
+        fn test_order_classes_single_class() {
+            let classes = vec![create_test_class("Only Class", 99)];
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered.len(), 1);
+            assert_eq!(ordered[0].name().as_str(), "Only Class");
+            assert_eq!(ordered[0].index().value(), 0);
+        }
+
+        #[test]
+        fn test_order_classes_already_ordered() {
+            let classes = vec![
+                create_test_class("First", 0),
+                create_test_class("Second", 1),
+                create_test_class("Third", 2),
+            ];
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered[0].name().as_str(), "First");
+            assert_eq!(ordered[1].name().as_str(), "Second");
+            assert_eq!(ordered[2].name().as_str(), "Third");
+            assert_eq!(ordered[0].index().value(), 0);
+            assert_eq!(ordered[1].index().value(), 1);
+            assert_eq!(ordered[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_order_classes_with_duplicate_indices() {
+            let classes = vec![
+                create_test_class("Class A", 5),
+                create_test_class("Class B", 5),
+                create_test_class("Class C", 5),
+            ];
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered.len(), 3);
+            assert_eq!(ordered[0].index().value(), 0);
+            assert_eq!(ordered[1].index().value(), 1);
+            assert_eq!(ordered[2].index().value(), 2);
+        }
+
+        #[test]
+        fn test_order_classes_preserves_id() {
+            let classes = vec![
+                create_test_class("Second", 10),
+                create_test_class("First", 5),
+            ];
+
+            let original_ids: Vec<_> = classes.iter().map(|c| c.id()).collect();
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered[0].id(), original_ids[1]);
+            assert_eq!(ordered[1].id(), original_ids[0]);
+        }
+
+        #[test]
+        fn test_order_classes_large_collection() {
+            let classes: Vec<Class> = (0..50)
+                .map(|i| create_test_class(&format!("Class {}", i), 50 - i))
+                .collect();
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered.len(), 50);
+            for (i, class) in ordered.iter().enumerate() {
+                assert_eq!(class.index().value(), i);
+            }
+            assert_eq!(ordered[0].name().as_str(), "Class 49");
+            assert_eq!(ordered[49].name().as_str(), "Class 0");
+        }
+
+        #[test]
+        fn test_order_classes_reverse_order() {
+            let classes = vec![
+                create_test_class("Last", 3),
+                create_test_class("Third", 2),
+                create_test_class("Second", 1),
+                create_test_class("First", 0),
+            ];
+
+            let ordered = Chapter::order_classes(classes).unwrap();
+
+            assert_eq!(ordered[0].name().as_str(), "First");
+            assert_eq!(ordered[1].name().as_str(), "Second");
+            assert_eq!(ordered[2].name().as_str(), "Third");
+            assert_eq!(ordered[3].name().as_str(), "Last");
         }
     }
 }
