@@ -44,6 +44,7 @@ pub enum ClassError {
 /// assert!(class.video_url().is_secure());
 /// assert!(class.index().is_first());
 /// ```
+#[derive(Clone)]
 pub struct Class {
     id: Id,
     name: SimpleName,
@@ -192,6 +193,28 @@ impl Class {
     #[must_use]
     pub const fn index(&self) -> Index {
         self.index
+    }
+
+    /// Sets the class index (position within the course).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::Class;
+    ///
+    /// let mut class = Class::new(
+    ///     "Lesson".to_string(),
+    ///     1800,
+    ///     "https://example.com/video.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// class.update_index(5);
+    /// assert_eq!(class.index().value(), 5);
+    /// ```
+    #[inline]
+    pub fn update_index(&mut self, index: usize) {
+        self.index = Index::new(index);
     }
 }
 
