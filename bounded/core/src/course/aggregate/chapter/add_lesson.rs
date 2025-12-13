@@ -1,0 +1,287 @@
+use super::{Chapter, ChapterError, Index, Lesson};
+
+impl Chapter {
+    /// Adds a lesson to this chapter and returns a new `Chapter` instance.
+    ///
+    /// If `index` is `None`, the lesson is appended at the end. If `index` is
+    /// `Some`, the lesson is inserted at that position and subsequent lessons
+    /// are shifted. After insertion, all lessons are reindexed sequentially.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChapterError::ChapterWithEmptyLessons` if reindexing fails
+    /// (should not occur in practice).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Chapter, Lesson};
+    /// use education_platform_common::Index;
+    ///
+    /// let lesson1 = Lesson::new(
+    ///     "First".to_string(),
+    ///     600,
+    ///     "https://example.com/1.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let chapter = Chapter::new("My Chapter".to_string(), 0, vec![lesson1]).unwrap();
+    ///
+    /// let new_lesson = Lesson::new(
+    ///     "Second".to_string(),
+    ///     600,
+    ///     "https://example.com/2.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let updated = chapter.add_lesson(new_lesson, None).unwrap();
+    /// assert_eq!(updated.lessons().len(), 2);
+    /// assert_eq!(updated.lessons()[1].name().as_str(), "Second");
+    /// ```
+    pub fn add_lesson(
+        &self,
+        lesson: Lesson,
+        index: Option<Index>,
+    ) -> Result<Chapter, ChapterError> {
+        let mut lessons = self.lessons.clone();
+
+        let position = index
+            .map(|idx| idx.value().min(lessons.len()))
+            .unwrap_or(lessons.len());
+
+        lessons.insert(position, lesson);
+
+        Ok(Chapter {
+            id: self.id,
+            name: self.name.clone(),
+            index: self.index,
+            lessons: Self::reassign_index_lessons(&lessons)?,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use education_platform_common::Entity;
+
+    fn create_test_lesson(name: &str, index: usize) -> Lesson {
+        Lesson::new(
+            name.to_string(),
+            1800,
+            format!("https://example.com/{}.mp4", index),
+            index,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_add_lesson_appends_at_end_when_index_is_none() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(updated.lessons().len(), 2);
+        assert_eq!(updated.lessons()[0].name().as_str(), "First");
+        assert_eq!(updated.lessons()[1].name().as_str(), "Second");
+    }
+
+    #[test]
+    fn test_add_lesson_inserts_at_beginning_with_index_zero() {
+        let lesson = create_test_lesson("Second", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let new_lesson = create_test_lesson("First", 0);
+        let updated = chapter.add_lesson(new_lesson, Some(Index::new(0))).unwrap();
+
+        assert_eq!(updated.lessons().len(), 2);
+        assert_eq!(updated.lessons()[0].name().as_str(), "First");
+        assert_eq!(updated.lessons()[1].name().as_str(), "Second");
+    }
+
+    #[test]
+    fn test_add_lesson_inserts_at_middle() {
+        let lessons = vec![
+            create_test_lesson("First", 0),
+            create_test_lesson("Third", 1),
+        ];
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter.add_lesson(new_lesson, Some(Index::new(1))).unwrap();
+
+        assert_eq!(updated.lessons().len(), 3);
+        assert_eq!(updated.lessons()[0].name().as_str(), "First");
+        assert_eq!(updated.lessons()[1].name().as_str(), "Second");
+        assert_eq!(updated.lessons()[2].name().as_str(), "Third");
+    }
+
+    #[test]
+    fn test_add_lesson_reassigns_indices_sequentially() {
+        let lessons = vec![
+            create_test_lesson("First", 0),
+            create_test_lesson("Second", 1),
+        ];
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+
+        let new_lesson = create_test_lesson("New", 99);
+        let updated = chapter.add_lesson(new_lesson, Some(Index::new(1))).unwrap();
+
+        assert_eq!(updated.lessons()[0].index().value(), 0);
+        assert_eq!(updated.lessons()[1].index().value(), 1);
+        assert_eq!(updated.lessons()[2].index().value(), 2);
+    }
+
+    #[test]
+    fn test_add_lesson_preserves_chapter_id() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+        let original_id = chapter.id();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(updated.id(), original_id);
+    }
+
+    #[test]
+    fn test_add_lesson_preserves_chapter_name() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("My Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(updated.name().as_str(), "My Chapter");
+    }
+
+    #[test]
+    fn test_add_lesson_preserves_chapter_index() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 5, vec![lesson]).unwrap();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(updated.index().value(), 5);
+    }
+
+    #[test]
+    fn test_add_lesson_does_not_modify_original() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let _ = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(chapter.lessons().len(), 1);
+        assert_eq!(chapter.lessons()[0].name().as_str(), "First");
+    }
+
+    #[test]
+    fn test_add_lesson_with_index_beyond_length_appends_at_end() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter
+            .add_lesson(new_lesson, Some(Index::new(100)))
+            .unwrap();
+
+        assert_eq!(updated.lessons().len(), 2);
+        assert_eq!(updated.lessons()[1].name().as_str(), "Second");
+        assert_eq!(updated.lessons()[1].index().value(), 1);
+    }
+
+    #[test]
+    fn test_add_lesson_preserves_existing_lesson_ids() {
+        let lessons = vec![
+            create_test_lesson("First", 0),
+            create_test_lesson("Second", 1),
+        ];
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let original_ids: Vec<_> = chapter.lessons().iter().map(|c| c.id()).collect();
+
+        let new_lesson = create_test_lesson("New", 0);
+        let updated = chapter.add_lesson(new_lesson, Some(Index::new(1))).unwrap();
+
+        assert_eq!(updated.lessons()[0].id(), original_ids[0]);
+        assert_eq!(updated.lessons()[2].id(), original_ids[1]);
+    }
+
+    #[test]
+    fn test_add_lesson_multiple_times() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let chapter = chapter
+            .add_lesson(create_test_lesson("Second", 0), None)
+            .unwrap();
+        let chapter = chapter
+            .add_lesson(create_test_lesson("Third", 0), None)
+            .unwrap();
+        let chapter = chapter
+            .add_lesson(create_test_lesson("Fourth", 0), None)
+            .unwrap();
+
+        assert_eq!(chapter.lessons().len(), 4);
+        assert_eq!(chapter.lessons()[0].name().as_str(), "First");
+        assert_eq!(chapter.lessons()[1].name().as_str(), "Second");
+        assert_eq!(chapter.lessons()[2].name().as_str(), "Third");
+        assert_eq!(chapter.lessons()[3].name().as_str(), "Fourth");
+    }
+
+    #[test]
+    fn test_add_lesson_at_last_position() {
+        let lessons = vec![
+            create_test_lesson("First", 0),
+            create_test_lesson("Second", 1),
+        ];
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+
+        let new_lesson = create_test_lesson("Third", 0);
+        let updated = chapter.add_lesson(new_lesson, Some(Index::new(2))).unwrap();
+
+        assert_eq!(updated.lessons().len(), 3);
+        assert_eq!(updated.lessons()[2].name().as_str(), "Third");
+        assert_eq!(updated.lessons()[2].index().value(), 2);
+    }
+
+    #[test]
+    fn test_add_lesson_updates_total_duration() {
+        let lesson = Lesson::new(
+            "First".to_string(),
+            1800,
+            "https://example.com/1.mp4".to_string(),
+            0,
+        )
+        .unwrap();
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        let new_lesson = Lesson::new(
+            "Second".to_string(),
+            1200,
+            "https://example.com/2.mp4".to_string(),
+            0,
+        )
+        .unwrap();
+        let updated = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(updated.total_duration().total_seconds(), 3000);
+    }
+
+    #[test]
+    fn test_add_lesson_updates_lesson_quantity() {
+        let lesson = create_test_lesson("First", 0);
+        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+
+        assert_eq!(chapter.lesson_quantity(), 1);
+
+        let new_lesson = create_test_lesson("Second", 0);
+        let updated = chapter.add_lesson(new_lesson, None).unwrap();
+
+        assert_eq!(updated.lesson_quantity(), 2);
+    }
+}

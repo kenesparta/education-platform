@@ -763,6 +763,134 @@ When writing new code, ensure:
 - **Coverage**: All public functions should have tests
 - **Test organization**: Group related tests in nested modules
 
+#### Large Module Organization (Splitting Modules)
+
+**When a module becomes too large (>300-400 lines), split it into submodules with inline tests.**
+
+Use the modern Rust 2018+ approach: keep `module.rs` alongside a `module/` directory.
+
+**Structure Pattern:**
+```
+src/
+├── chapter.rs              # Main module file (struct, error, constructor)
+└── chapter/
+    ├── getters.rs          # Getter methods + inline tests
+    └── lesson_operations.rs # Mutation methods + inline tests
+```
+
+**Main module file (`chapter.rs`):**
+```rust
+mod getters;
+mod lesson_operations;
+
+use crate::Lesson;
+use education_platform_common::{Entity, Id, Index, SimpleName};
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ChapterError {
+    #[error("Chapter name validation failed: {0}")]
+    NameError(#[from] SimpleNameError),
+}
+
+pub struct Chapter {
+    id: Id,
+    name: SimpleName,
+    // ...
+}
+
+impl Chapter {
+    pub fn new(/* ... */) -> Result<Self, ChapterError> {
+        // Constructor implementation
+    }
+}
+
+impl Entity for Chapter {
+    fn id(&self) -> Id {
+        self.id
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper function for tests (can be used by submodule tests via `use super::*`)
+    pub fn create_test_lesson(name: &str, index: usize) -> Lesson {
+        Lesson::new(name.to_string(), 1800, format!("https://example.com/{}.mp4", index), index).unwrap()
+    }
+
+    mod constructors {
+        use super::*;
+
+        #[test]
+        fn test_new_creates_valid_chapter() {
+            // ...
+        }
+    }
+}
+```
+
+**Submodule file (`chapter/getters.rs`):**
+```rust
+use super::{Chapter, ChapterError, Lesson, SimpleName};
+use education_platform_common::Index;
+
+impl Chapter {
+    #[inline]
+    #[must_use]
+    pub const fn name(&self) -> &SimpleName {
+        &self.name
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn index(&self) -> Index {
+        self.index
+    }
+
+    // Other getters...
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_lesson(name: &str, index: usize) -> Lesson {
+        Lesson::new(name.to_string(), 1800, format!("https://example.com/{}.mp4", index), index).unwrap()
+    }
+
+    mod getters {
+        use super::*;
+
+        #[test]
+        fn test_name_returns_simple_name() {
+            // ...
+        }
+    }
+}
+```
+
+**Key Principles:**
+1. **Keep tests alongside code**: Each submodule has its own `#[cfg(test)] mod tests` block
+2. **Split by responsibility**: Group related methods (getters, mutations, etc.)
+3. **Use `pub(super)` for internal helpers**: Functions needed across submodules but not public API
+4. **Import from parent**: Use `use super::{Chapter, ChapterError, ...}` in submodules
+5. **Helper functions per test module**: Each test module defines its own test helpers
+
+**When to Split:**
+- Module exceeds 300-400 lines
+- Multiple distinct responsibilities (getters vs mutations vs helpers)
+- Tests become hard to navigate
+- Code review becomes difficult
+
+**Benefits:**
+- Tests live next to the code they test (idiomatic Rust)
+- Each file is focused and readable
+- Easy to find tests for specific functionality
+- Standard Rust module system (no special `#[path]` directives needed)
+
 #### Test Coverage
 
 This project uses `cargo-llvm-cov` for measuring test coverage:
