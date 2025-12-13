@@ -10,6 +10,7 @@ mod person_name;
 mod simple_name;
 mod url;
 mod validator;
+mod date;
 
 pub use document::*;
 pub use duration::*;
@@ -23,3 +24,4 @@ pub use person_name::*;
 pub use simple_name::*;
 pub use url::*;
 pub use validator::*;
+pub use date::*;
