@@ -4,48 +4,48 @@ use education_platform_common::{
 };
 use thiserror::Error;
 
-/// Error types for Class validation failures.
+/// Error types for Lesson validation failures.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum ClassError {
-    #[error("Class name validation failed: {0}")]
+pub enum LessonError {
+    #[error("Lesson name validation failed: {0}")]
     NameError(#[from] SimpleNameError),
 
-    #[error("Class video URL validation failed: {0}")]
+    #[error("Lesson video URL validation failed: {0}")]
     VideoUrlError(#[from] UrlError),
 
-    #[error("Class index error: {0}")]
+    #[error("Lesson index error: {0}")]
     IndexError(#[from] IndexError),
 
     #[error("Duration must be different from zero")]
     DurationIsZero,
 }
 
-/// A class within a course, representing a single lesson or video.
+/// A lesson within a course, representing a single video or learning unit.
 ///
-/// `Class` is an entity that belongs to a `Course` aggregate. It contains
-/// information about a single class including its name, duration, video URL,
+/// `Lesson` is an entity that belongs to a `Course` aggregate. It contains
+/// information about a single lesson including its name, duration, video URL,
 /// and position within the course.
 ///
 /// # Examples
 ///
 /// ```
-/// use education_platform_core::Class;
+/// use education_platform_core::Lesson;
 ///
-/// let class = Class::new(
+/// let lesson = Lesson::new(
 ///     "Introduction to Rust".to_string(),
 ///     3600,
 ///     "https://example.com/videos/intro.mp4".to_string(),
 ///     0,
 /// ).unwrap();
 ///
-/// assert_eq!(class.name().as_str(), "Introduction to Rust");
-/// assert_eq!(class.duration().total_seconds(), 3600);
-/// assert!(class.video_url().is_secure());
-/// assert!(class.index().is_first());
+/// assert_eq!(lesson.name().as_str(), "Introduction to Rust");
+/// assert_eq!(lesson.duration().total_seconds(), 3600);
+/// assert!(lesson.video_url().is_secure());
+/// assert!(lesson.index().is_first());
 /// ```
 #[derive(Clone)]
-pub struct Class {
+pub struct Lesson {
     id: Id,
     name: SimpleName,
     duration: Duration,
@@ -53,44 +53,44 @@ pub struct Class {
     index: Index,
 }
 
-impl Class {
-    /// Creates a new `Class` with the provided parameters.
+impl Lesson {
+    /// Creates a new `Lesson` with the provided parameters.
     ///
     /// # Arguments
     ///
-    /// * `name` - The class name (will be validated as a SimpleName)
-    /// * `duration_seconds` - Duration of the class in seconds
-    /// * `video_url` - URL to the class video (must be valid HTTP/HTTPS)
-    /// * `index` - Position of this class within the course (zero-based)
+    /// * `name` - The lesson name (will be validated as a SimpleName)
+    /// * `duration_seconds` - Duration of the lesson in seconds
+    /// * `video_url` - URL to the lesson video (must be valid HTTP/HTTPS)
+    /// * `index` - Position of this lesson within the course (zero-based)
     ///
     /// # Errors
     ///
-    /// Returns `ClassError::NameError` if the name validation fails.
-    /// Returns `ClassError::VideoUrlError` if the URL validation fails.
+    /// Returns `LessonError::NameError` if the name validation fails.
+    /// Returns `LessonError::VideoUrlError` if the URL validation fails.
     ///
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::Class;
+    /// use education_platform_core::Lesson;
     ///
-    /// let class = Class::new(
+    /// let lesson = Lesson::new(
     ///     "Getting Started with Rust".to_string(),
     ///     1800,
     ///     "https://example.com/videos/lesson1.mp4".to_string(),
     ///     0,
     /// ).unwrap();
     ///
-    /// assert_eq!(class.name().as_str(), "Getting Started with Rust");
+    /// assert_eq!(lesson.name().as_str(), "Getting Started with Rust");
     /// ```
     pub fn new(
         name: String,
         duration_seconds: u64,
         video_url: String,
         index: usize,
-    ) -> Result<Self, ClassError> {
+    ) -> Result<Self, LessonError> {
         let duration = Duration::from_seconds(duration_seconds);
         if duration.is_zero() {
-            return Err(ClassError::DurationIsZero);
+            return Err(LessonError::DurationIsZero);
         }
 
         let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
@@ -107,21 +107,21 @@ impl Class {
         })
     }
 
-    /// Returns the class name.
+    /// Returns the lesson name.
     ///
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::Class;
+    /// use education_platform_core::Lesson;
     ///
-    /// let class = Class::new(
+    /// let lesson = Lesson::new(
     ///     "Rust Basics".to_string(),
     ///     1200,
     ///     "https://example.com/video.mp4".to_string(),
     ///     0,
     /// ).unwrap();
     ///
-    /// assert_eq!(class.name().as_str(), "Rust Basics");
+    /// assert_eq!(lesson.name().as_str(), "Rust Basics");
     /// ```
     #[inline]
     #[must_use]
@@ -129,22 +129,22 @@ impl Class {
         &self.name
     }
 
-    /// Returns the class duration.
+    /// Returns the lesson duration.
     ///
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::Class;
+    /// use education_platform_core::Lesson;
     ///
-    /// let class = Class::new(
-    ///     "Lesson".to_string(),
+    /// let lesson = Lesson::new(
+    ///     "Introduction".to_string(),
     ///     3665,
     ///     "https://example.com/video.mp4".to_string(),
     ///     0,
     /// ).unwrap();
     ///
-    /// assert_eq!(class.duration().total_seconds(), 3665);
-    /// assert_eq!(class.duration().hours(), 1);
+    /// assert_eq!(lesson.duration().total_seconds(), 3665);
+    /// assert_eq!(lesson.duration().hours(), 1);
     /// ```
     #[inline]
     #[must_use]
@@ -157,16 +157,16 @@ impl Class {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::Class;
+    /// use education_platform_core::Lesson;
     ///
-    /// let class = Class::new(
-    ///     "Lesson".to_string(),
+    /// let lesson = Lesson::new(
+    ///     "Introduction".to_string(),
     ///     1800,
     ///     "https://example.com/video.mp4".to_string(),
     ///     0,
     /// ).unwrap();
     ///
-    /// assert_eq!(class.video_url().as_str(), "https://example.com/video.mp4");
+    /// assert_eq!(lesson.video_url().as_str(), "https://example.com/video.mp4");
     /// ```
     #[inline]
     #[must_use]
@@ -174,21 +174,21 @@ impl Class {
         &self.video_url
     }
 
-    /// Returns the class index (position within the course).
+    /// Returns the lesson index (position within the course).
     ///
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::Class;
+    /// use education_platform_core::Lesson;
     ///
-    /// let class = Class::new(
-    ///     "Lesson".to_string(),
+    /// let lesson = Lesson::new(
+    ///     "Introduction".to_string(),
     ///     1800,
     ///     "https://example.com/video.mp4".to_string(),
     ///     5,
     /// ).unwrap();
     ///
-    /// assert_eq!(class.index().value(), 5);
+    /// assert_eq!(lesson.index().value(), 5);
     /// ```
     #[inline]
     #[must_use]
@@ -196,22 +196,22 @@ impl Class {
         self.index
     }
 
-    /// Sets the class index (position within the course).
+    /// Sets the lesson index (position within the course).
     ///
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::Class;
+    /// use education_platform_core::Lesson;
     ///
-    /// let mut class = Class::new(
-    ///     "Lesson".to_string(),
+    /// let mut lesson = Lesson::new(
+    ///     "Introduction".to_string(),
     ///     1800,
     ///     "https://example.com/video.mp4".to_string(),
     ///     0,
     /// ).unwrap();
     ///
-    /// class.update_index(5);
-    /// assert_eq!(class.index().value(), 5);
+    /// lesson.update_index(5);
+    /// assert_eq!(lesson.index().value(), 5);
     /// ```
     #[inline]
     pub fn update_index(&mut self, index: usize) {
@@ -219,7 +219,7 @@ impl Class {
     }
 }
 
-impl Entity for Class {
+impl Entity for Lesson {
     fn id(&self) -> Id {
         self.id
     }
@@ -233,25 +233,25 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_new_creates_valid_class() {
-            let class = Class::new(
+        fn test_new_creates_valid_lesson() {
+            let lesson = Lesson::new(
                 "Introduction to Rust".to_string(),
                 3600,
                 "https://example.com/video.mp4".to_string(),
                 0,
             );
 
-            assert!(class.is_ok());
-            let class = class.unwrap();
-            assert_eq!(class.name().as_str(), "Introduction to Rust");
-            assert_eq!(class.duration().total_seconds(), 3600);
-            assert_eq!(class.video_url().as_str(), "https://example.com/video.mp4");
-            assert_eq!(class.index().value(), 0);
+            assert!(lesson.is_ok());
+            let lesson = lesson.unwrap();
+            assert_eq!(lesson.name().as_str(), "Introduction to Rust");
+            assert_eq!(lesson.duration().total_seconds(), 3600);
+            assert_eq!(lesson.video_url().as_str(), "https://example.com/video.mp4");
+            assert_eq!(lesson.index().value(), 0);
         }
 
         #[test]
         fn test_new_with_different_index() {
-            let class = Class::new(
+            let lesson = Lesson::new(
                 "Lesson 5".to_string(),
                 1800,
                 "https://example.com/lesson5.mp4".to_string(),
@@ -259,33 +259,33 @@ mod tests {
             )
             .unwrap();
 
-            assert_eq!(class.index().value(), 4);
+            assert_eq!(lesson.index().value(), 4);
         }
 
         #[test]
         fn test_new_generates_unique_id() {
-            let class1 = Class::new(
-                "Class 1".to_string(),
+            let lesson1 = Lesson::new(
+                "Lesson 1".to_string(),
                 600,
                 "https://example.com/c1.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            let class2 = Class::new(
-                "Class 2".to_string(),
+            let lesson2 = Lesson::new(
+                "Lesson 2".to_string(),
                 600,
                 "https://example.com/c2.mp4".to_string(),
                 1,
             )
             .unwrap();
 
-            assert_ne!(class1.id(), class2.id());
+            assert_ne!(lesson1.id(), lesson2.id());
         }
 
         #[test]
         fn test_new_with_empty_name_returns_error() {
-            let result = Class::new(
+            let result = Lesson::new(
                 "".to_string(),
                 3600,
                 "https://example.com/video.mp4".to_string(),
@@ -293,12 +293,12 @@ mod tests {
             );
 
             assert!(result.is_err());
-            assert!(matches!(result, Err(ClassError::NameError(_))));
+            assert!(matches!(result, Err(LessonError::NameError(_))));
         }
 
         #[test]
         fn test_new_with_invalid_url_returns_error() {
-            let result = Class::new(
+            let result = Lesson::new(
                 "Valid Name".to_string(),
                 3600,
                 "not-a-valid-url".to_string(),
@@ -306,12 +306,12 @@ mod tests {
             );
 
             assert!(result.is_err());
-            assert!(matches!(result, Err(ClassError::VideoUrlError(_))));
+            assert!(matches!(result, Err(LessonError::VideoUrlError(_))));
         }
 
         #[test]
         fn test_new_with_invalid_url_scheme_returns_error() {
-            let result = Class::new(
+            let result = Lesson::new(
                 "Valid Name".to_string(),
                 3600,
                 "ftp://example.com/video.mp4".to_string(),
@@ -319,12 +319,12 @@ mod tests {
             );
 
             assert!(result.is_err());
-            assert!(matches!(result, Err(ClassError::VideoUrlError(_))));
+            assert!(matches!(result, Err(LessonError::VideoUrlError(_))));
         }
 
         #[test]
         fn test_new_with_zero_duration_returns_error() {
-            let result = Class::new(
+            let result = Lesson::new(
                 "Valid Name".to_string(),
                 0,
                 "https://example.com/video.mp4".to_string(),
@@ -332,12 +332,12 @@ mod tests {
             );
 
             assert!(result.is_err());
-            assert!(matches!(result, Err(ClassError::DurationIsZero)));
+            assert!(matches!(result, Err(LessonError::DurationIsZero)));
         }
 
         #[test]
         fn test_new_with_name_too_short_returns_error() {
-            let result = Class::new(
+            let result = Lesson::new(
                 "AB".to_string(),
                 3600,
                 "https://example.com/video.mp4".to_string(),
@@ -345,12 +345,12 @@ mod tests {
             );
 
             assert!(result.is_err());
-            assert!(matches!(result, Err(ClassError::NameError(_))));
+            assert!(matches!(result, Err(LessonError::NameError(_))));
         }
 
         #[test]
         fn test_new_with_name_at_min_length() {
-            let result = Class::new(
+            let result = Lesson::new(
                 "ABC".to_string(),
                 3600,
                 "https://example.com/video.mp4".to_string(),
@@ -364,7 +364,7 @@ mod tests {
         #[test]
         fn test_new_with_name_too_long_returns_error() {
             let long_name = "A".repeat(51);
-            let result = Class::new(
+            let result = Lesson::new(
                 long_name,
                 3600,
                 "https://example.com/video.mp4".to_string(),
@@ -372,13 +372,13 @@ mod tests {
             );
 
             assert!(result.is_err());
-            assert!(matches!(result, Err(ClassError::NameError(_))));
+            assert!(matches!(result, Err(LessonError::NameError(_))));
         }
 
         #[test]
         fn test_new_with_name_at_max_length() {
             let max_name = "A".repeat(50);
-            let result = Class::new(
+            let result = Lesson::new(
                 max_name.clone(),
                 3600,
                 "https://example.com/video.mp4".to_string(),
@@ -395,37 +395,37 @@ mod tests {
 
         #[test]
         fn test_name_returns_simple_name() {
-            let class = Class::new(
-                "Test Class".to_string(),
+            let lesson = Lesson::new(
+                "Test Lesson".to_string(),
                 1200,
                 "https://example.com/test.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            assert_eq!(class.name().as_str(), "Test Class");
+            assert_eq!(lesson.name().as_str(), "Test Lesson");
         }
 
         #[test]
         fn test_duration_returns_duration() {
-            let class = Class::new(
-                "Test Class".to_string(),
+            let lesson = Lesson::new(
+                "Test Lesson".to_string(),
                 7265,
                 "https://example.com/test.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            assert_eq!(class.duration().total_seconds(), 7265);
-            assert_eq!(class.duration().hours(), 2);
-            assert_eq!(class.duration().minutes(), 1);
-            assert_eq!(class.duration().seconds(), 5);
+            assert_eq!(lesson.duration().total_seconds(), 7265);
+            assert_eq!(lesson.duration().hours(), 2);
+            assert_eq!(lesson.duration().minutes(), 1);
+            assert_eq!(lesson.duration().seconds(), 5);
         }
 
         #[test]
         fn test_video_url_returns_url() {
-            let class = Class::new(
-                "Test Class".to_string(),
+            let lesson = Lesson::new(
+                "Test Lesson".to_string(),
                 1200,
                 "https://cdn.example.com/videos/lesson.mp4".to_string(),
                 0,
@@ -433,37 +433,37 @@ mod tests {
             .unwrap();
 
             assert_eq!(
-                class.video_url().as_str(),
+                lesson.video_url().as_str(),
                 "https://cdn.example.com/videos/lesson.mp4"
             );
-            assert!(class.video_url().is_secure());
+            assert!(lesson.video_url().is_secure());
         }
 
         #[test]
         fn test_index_returns_index() {
-            let class = Class::new(
-                "Test Class".to_string(),
+            let lesson = Lesson::new(
+                "Test Lesson".to_string(),
                 1200,
                 "https://example.com/test.mp4".to_string(),
                 10,
             )
             .unwrap();
 
-            assert_eq!(class.index().value(), 10);
-            assert!(!class.index().is_first());
+            assert_eq!(lesson.index().value(), 10);
+            assert!(!lesson.index().is_first());
         }
 
         #[test]
-        fn test_index_first_class() {
-            let class = Class::new(
-                "First Class".to_string(),
+        fn test_index_first_lesson() {
+            let lesson = Lesson::new(
+                "First Lesson".to_string(),
                 1200,
                 "https://example.com/first.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            assert!(class.index().is_first());
+            assert!(lesson.index().is_first());
         }
     }
 
@@ -472,15 +472,15 @@ mod tests {
 
         #[test]
         fn test_id_returns_valid_id() {
-            let class = Class::new(
-                "Test Class".to_string(),
+            let lesson = Lesson::new(
+                "Test Lesson".to_string(),
                 1200,
                 "https://example.com/test.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            let id = class.id();
+            let id = lesson.id();
             assert_eq!(id.as_bytes().len(), 16);
         }
     }
@@ -489,8 +489,8 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_course_introduction_class() {
-            let class = Class::new(
+        fn test_course_introduction_lesson() {
+            let lesson = Lesson::new(
                 "Introduction to the Course".to_string(),
                 300,
                 "https://edu.example.com/courses/rust/intro.mp4".to_string(),
@@ -498,14 +498,14 @@ mod tests {
             )
             .unwrap();
 
-            assert_eq!(class.name().as_str(), "Introduction to the Course");
-            assert_eq!(class.duration().format_hours(), "05m 00s");
-            assert!(class.index().is_first());
+            assert_eq!(lesson.name().as_str(), "Introduction to the Course");
+            assert_eq!(lesson.duration().format_hours(), "05m 00s");
+            assert!(lesson.index().is_first());
         }
 
         #[test]
-        fn test_main_lesson_class() {
-            let class = Class::new(
+        fn test_main_lesson() {
+            let lesson = Lesson::new(
                 "Chapter 1: Getting Started with Rust".to_string(),
                 3665,
                 "https://cdn.example.com/rust-course/chapter1.mp4".to_string(),
@@ -513,13 +513,13 @@ mod tests {
             )
             .unwrap();
 
-            assert_eq!(class.duration().format_hours(), "01h 01m 05s");
-            assert_eq!(class.index().value(), 1);
+            assert_eq!(lesson.duration().format_hours(), "01h 01m 05s");
+            assert_eq!(lesson.index().value(), 1);
         }
 
         #[test]
-        fn test_final_class() {
-            let class = Class::new(
+        fn test_final_lesson() {
+            let lesson = Lesson::new(
                 "Conclusion & Next Steps".to_string(),
                 600,
                 "https://videos.example.com/conclusion.mp4".to_string(),
@@ -527,8 +527,8 @@ mod tests {
             )
             .unwrap();
 
-            assert_eq!(class.index().value(), 24);
-            assert_eq!(class.duration().format_hours(), "10m 00s");
+            assert_eq!(lesson.index().value(), 24);
+            assert_eq!(lesson.duration().format_hours(), "10m 00s");
         }
     }
 }

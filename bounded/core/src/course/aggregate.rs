@@ -1,5 +1,7 @@
 mod chapter;
-mod class;
+mod course;
+mod lesson;
 
 pub use chapter::*;
-pub use class::*;
+pub use course::*;
+pub use lesson::*;
