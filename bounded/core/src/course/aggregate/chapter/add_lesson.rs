@@ -43,19 +43,20 @@ impl Chapter {
         lesson: Lesson,
         index: Option<Index>,
     ) -> Result<Chapter, ChapterError> {
-        let mut lessons = self.lessons.clone();
-
         let position = index
-            .map(|idx| idx.value().min(lessons.len()))
-            .unwrap_or(lessons.len());
+            .map(|idx| idx.value().min(self.lessons.len()))
+            .unwrap_or(self.lessons.len());
 
-        lessons.insert(position, lesson);
+        let mut lessons = Vec::with_capacity(self.lessons.len() + 1);
+        lessons.extend_from_slice(&self.lessons[..position]);
+        lessons.push(lesson);
+        lessons.extend_from_slice(&self.lessons[position..]);
+
+        let lessons = Self::reassign_index_lessons(&lessons)?;
 
         Ok(Chapter {
-            id: self.id,
-            name: self.name.clone(),
-            index: self.index,
-            lessons: Self::reassign_index_lessons(&lessons)?,
+            lessons,
+            ..self.clone()
         })
     }
 }

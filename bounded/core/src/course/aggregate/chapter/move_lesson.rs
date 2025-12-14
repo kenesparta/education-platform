@@ -98,12 +98,7 @@ impl Chapter {
             .ok_or(ChapterError::LessonDoesNotExist)?;
 
         if current_position == 0 {
-            return Ok(Chapter {
-                id: self.id,
-                name: self.name.clone(),
-                index: self.index,
-                lessons: self.lessons.clone(),
-            });
+            return Ok(self.clone());
         }
 
         self.move_lesson(lesson, Index::new(current_position - 1))
@@ -156,12 +151,7 @@ impl Chapter {
             .ok_or(ChapterError::LessonDoesNotExist)?;
 
         if current_position >= self.lessons.len() - 1 {
-            return Ok(Chapter {
-                id: self.id,
-                name: self.name.clone(),
-                index: self.index,
-                lessons: self.lessons.clone(),
-            });
+            return Ok(self.clone());
         }
 
         self.move_lesson(lesson, Index::new(current_position + 1))

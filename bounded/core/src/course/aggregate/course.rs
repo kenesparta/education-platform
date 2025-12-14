@@ -1,3 +1,4 @@
+mod add_chapter;
 mod chapter_operations;
 mod getters;
 

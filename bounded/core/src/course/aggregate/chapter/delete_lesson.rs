@@ -49,11 +49,11 @@ impl Chapter {
             .cloned()
             .collect();
 
+        let lessons = Self::reassign_index_lessons(&lessons)?;
+
         Ok(Chapter {
-            id: self.id,
-            name: self.name.clone(),
-            index: self.index,
-            lessons: Self::reassign_index_lessons(&lessons)?,
+            lessons,
+            ..self.clone()
         })
     }
 }
