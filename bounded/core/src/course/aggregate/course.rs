@@ -293,12 +293,9 @@ mod tests {
                 ],
             )
             .unwrap();
-            let chapter2 = Chapter::new(
-                "Chapter 2".to_string(),
-                1,
-                vec![create_test_lesson("Lesson 3", 0)],
-            )
-            .unwrap();
+            let chapter2 =
+                Chapter::new("Chapter 2".to_string(), 1, vec![create_test_lesson("Lesson 3", 0)])
+                    .unwrap();
 
             let course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();

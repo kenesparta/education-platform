@@ -127,9 +127,7 @@ impl Chapter {
     pub fn total_duration(&self) -> Duration {
         self.lessons
             .iter()
-            .fold(Duration::default(), |acc, lesson| {
-                acc.add(&lesson.duration())
-            })
+            .fold(Duration::default(), |acc, lesson| acc.add(&lesson.duration()))
     }
 
     /// Returns the number of lessons in this chapter.
@@ -321,20 +319,12 @@ mod tests {
 
         #[test]
         fn test_total_duration_multiple_lessons() {
-            let lesson1 = Lesson::new(
-                "Test 1".to_string(),
-                1800,
-                "https://example.com/1.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-            let lesson2 = Lesson::new(
-                "Test 2".to_string(),
-                1200,
-                "https://example.com/2.mp4".to_string(),
-                1,
-            )
-            .unwrap();
+            let lesson1 =
+                Lesson::new("Test 1".to_string(), 1800, "https://example.com/1.mp4".to_string(), 0)
+                    .unwrap();
+            let lesson2 =
+                Lesson::new("Test 2".to_string(), 1200, "https://example.com/2.mp4".to_string(), 1)
+                    .unwrap();
             let chapter =
                 Chapter::new("Test Chapter".to_string(), 0, vec![lesson1, lesson2]).unwrap();
 

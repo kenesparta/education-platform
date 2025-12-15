@@ -252,22 +252,14 @@ mod tests {
 
     #[test]
     fn test_add_lesson_updates_total_duration() {
-        let lesson = Lesson::new(
-            "First".to_string(),
-            1800,
-            "https://example.com/1.mp4".to_string(),
-            0,
-        )
-        .unwrap();
+        let lesson =
+            Lesson::new("First".to_string(), 1800, "https://example.com/1.mp4".to_string(), 0)
+                .unwrap();
         let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
 
-        let new_lesson = Lesson::new(
-            "Second".to_string(),
-            1200,
-            "https://example.com/2.mp4".to_string(),
-            0,
-        )
-        .unwrap();
+        let new_lesson =
+            Lesson::new("Second".to_string(), 1200, "https://example.com/2.mp4".to_string(), 0)
+                .unwrap();
         let updated = chapter.add_lesson(new_lesson, None).unwrap();
 
         assert_eq!(updated.total_duration().total_seconds(), 3000);

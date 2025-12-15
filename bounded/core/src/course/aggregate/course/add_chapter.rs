@@ -17,8 +17,7 @@ impl Course {
         chapters.extend_from_slice(&self.chapters[position..]);
 
         let chapters = Self::reassign_index_chapters(&chapters)?;
-        let (duration, number_of_lessons) =
-            Self::calculate_totals(&chapters, Duration::default());
+        let (duration, number_of_lessons) = Self::calculate_totals(&chapters, Duration::default());
 
         Ok(Course {
             chapters,
@@ -82,7 +81,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("Chapter 1", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(0))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(0)))
+                .unwrap();
 
             assert_eq!(updated_course.chapter_quantity(), 3);
             assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
@@ -102,7 +103,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("Chapter 2", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(1))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(1)))
+                .unwrap();
 
             assert_eq!(updated_course.chapter_quantity(), 3);
             assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
@@ -122,7 +125,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("Chapter 3", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(100))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(100)))
+                .unwrap();
 
             assert_eq!(updated_course.chapter_quantity(), 3);
             assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 3");
@@ -151,7 +156,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("Chapter 3", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(1))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(1)))
+                .unwrap();
 
             assert_eq!(updated_course.chapters()[0].index().value(), 0);
             assert_eq!(updated_course.chapters()[1].index().value(), 1);
@@ -207,7 +214,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("New Chapter", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(1))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(1)))
+                .unwrap();
 
             assert_eq!(updated_course.chapters()[0].id(), original_ids[0]);
             assert_eq!(updated_course.chapters()[2].id(), original_ids[1]);
@@ -259,7 +268,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("First", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(0))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(0)))
+                .unwrap();
 
             assert_eq!(updated_course.chapter_quantity(), 2);
             assert_eq!(updated_course.chapters()[0].name().as_str(), "First");
@@ -277,7 +288,9 @@ mod tests {
             let course = create_test_course("Test Course", initial_chapters);
             let new_chapter = create_test_chapter("Chapter 3", 99);
 
-            let updated_course = course.add_chapter(new_chapter, Some(Index::new(2))).unwrap();
+            let updated_course = course
+                .add_chapter(new_chapter, Some(Index::new(2)))
+                .unwrap();
 
             assert_eq!(updated_course.chapter_quantity(), 3);
             assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 3");
@@ -300,12 +313,14 @@ mod tests {
 
             let updated_course = course.add_chapter(new_chapter, None).unwrap();
 
-            assert_eq!(
-                updated_course.chapters()[1].name().as_str(),
-                "Special Chapter"
-            );
+            assert_eq!(updated_course.chapters()[1].name().as_str(), "Special Chapter");
             assert_eq!(updated_course.chapters()[1].lesson_quantity(), 1);
-            assert_eq!(updated_course.chapters()[1].total_duration().total_seconds(), 3600);
+            assert_eq!(
+                updated_course.chapters()[1]
+                    .total_duration()
+                    .total_seconds(),
+                3600
+            );
         }
     }
 }

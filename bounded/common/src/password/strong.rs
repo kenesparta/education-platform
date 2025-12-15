@@ -218,28 +218,19 @@ mod tests {
     #[test]
     fn test_new_with_empty_string_returns_error() {
         let result = StrongPassword::new("".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::ValidationError(_))
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::ValidationError(_))));
     }
 
     #[test]
     fn test_new_with_whitespace_only_returns_error() {
         let result = StrongPassword::new("   ".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::ValidationError(_))
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::ValidationError(_))));
     }
 
     #[test]
     fn test_new_with_too_short_password_returns_error() {
         let result = StrongPassword::new("Ab1!".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::ValidationError(_))
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::ValidationError(_))));
     }
 
     #[test]
@@ -259,28 +250,19 @@ mod tests {
     fn test_new_with_too_long_password_returns_error() {
         let too_long = format!("Aa1!{}", "x".repeat(MAX_LENGTH));
         let result = StrongPassword::new(too_long);
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::ValidationError(_))
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::ValidationError(_))));
     }
 
     #[test]
     fn test_new_without_uppercase_returns_error() {
         let result = StrongPassword::new("myp@ssw0rd".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::UppercaseNotFound)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::UppercaseNotFound)));
     }
 
     #[test]
     fn test_new_without_lowercase_returns_error() {
         let result = StrongPassword::new("MYP@SSW0RD".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::LowercaseNotFound)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::LowercaseNotFound)));
     }
 
     #[test]
@@ -292,37 +274,25 @@ mod tests {
     #[test]
     fn test_new_without_special_char_returns_error() {
         let result = StrongPassword::new("MyPassword123".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::SpecialCharacterNotFound)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::SpecialCharacterNotFound)));
     }
 
     #[test]
     fn test_new_with_whitespace_returns_error() {
         let result = StrongPassword::new("My P@ssw0rd".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::WhitespaceNotAllowed)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::WhitespaceNotAllowed)));
     }
 
     #[test]
     fn test_new_with_tab_returns_error() {
         let result = StrongPassword::new("My\tP@ssw0rd".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::WhitespaceNotAllowed)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::WhitespaceNotAllowed)));
     }
 
     #[test]
     fn test_new_with_newline_returns_error() {
         let result = StrongPassword::new("My\nP@ssw0rd".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::WhitespaceNotAllowed)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::WhitespaceNotAllowed)));
     }
 
     #[test]
@@ -412,10 +382,7 @@ mod tests {
     #[test]
     fn test_with_unicode_characters_without_special_char_returns_error() {
         let result = StrongPassword::new("MyPässw0rd".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::SpecialCharacterNotFound)
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::SpecialCharacterNotFound)));
     }
 
     #[test]
@@ -448,10 +415,7 @@ mod tests {
     #[test]
     fn test_edge_case_one_char_below_min_length() {
         let result = StrongPassword::new("Aa1!bcd".to_string());
-        assert!(matches!(
-            result,
-            Err(StrongPasswordError::ValidationError(_))
-        ));
+        assert!(matches!(result, Err(StrongPasswordError::ValidationError(_))));
     }
 
     #[test]

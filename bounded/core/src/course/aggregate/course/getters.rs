@@ -445,13 +445,9 @@ mod tests {
             .unwrap();
             let chapter1 = Chapter::new("Chapter One".to_string(), 0, vec![lesson1]).unwrap();
             let chapter2 = Chapter::new("Chapter Two".to_string(), 1, vec![lesson2]).unwrap();
-            let course = Course::new(
-                "Rust Programming".to_string(),
-                None,
-                0,
-                vec![chapter1, chapter2],
-            )
-            .unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter1, chapter2])
+                    .unwrap();
 
             assert_eq!(course.duration().total_seconds(), 3000);
         }
@@ -484,19 +480,12 @@ mod tests {
                 ],
             )
             .unwrap();
-            let chapter2 = Chapter::new(
-                "Chapter Two".to_string(),
-                1,
-                vec![create_test_lesson("Lesson 3", 0)],
-            )
-            .unwrap();
-            let course = Course::new(
-                "Rust Programming".to_string(),
-                None,
-                0,
-                vec![chapter1, chapter2],
-            )
-            .unwrap();
+            let chapter2 =
+                Chapter::new("Chapter Two".to_string(), 1, vec![create_test_lesson("Lesson 3", 0)])
+                    .unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter1, chapter2])
+                    .unwrap();
 
             assert_eq!(course.number_of_lessons(), 3);
         }

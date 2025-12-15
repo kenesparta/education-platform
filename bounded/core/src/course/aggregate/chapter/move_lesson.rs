@@ -350,20 +350,10 @@ mod tests {
         #[test]
         fn test_move_lesson_preserves_total_duration() {
             let lessons = vec![
-                Lesson::new(
-                    "First".to_string(),
-                    1800,
-                    "https://example.com/1.mp4".to_string(),
-                    0,
-                )
-                .unwrap(),
-                Lesson::new(
-                    "Second".to_string(),
-                    1200,
-                    "https://example.com/2.mp4".to_string(),
-                    1,
-                )
-                .unwrap(),
+                Lesson::new("First".to_string(), 1800, "https://example.com/1.mp4".to_string(), 0)
+                    .unwrap(),
+                Lesson::new("Second".to_string(), 1200, "https://example.com/2.mp4".to_string(), 1)
+                    .unwrap(),
             ];
             let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
             let original_duration = chapter.total_duration().total_seconds();

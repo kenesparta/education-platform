@@ -587,9 +587,6 @@ mod tests {
 
     #[test]
     fn test_invalid_latin_names_empty() {
-        assert!(matches!(
-            Name::is_valid_latin_name(""),
-            Err(NameError::EmptyValue)
-        ));
+        assert!(matches!(Name::is_valid_latin_name(""), Err(NameError::EmptyValue)));
     }
 }

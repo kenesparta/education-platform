@@ -202,10 +202,7 @@ impl HashedPassword {
         {
             return Err(HashedPasswordError::FormatNotValid {
                 algorithm: HashingAlgorithm::Bcrypt.to_string(),
-                reason: format!(
-                    "must start with one of: {}",
-                    VALID_BCRYPT_PREFIXES.join(", ")
-                ),
+                reason: format!("must start with one of: {}", VALID_BCRYPT_PREFIXES.join(", ")),
             });
         }
 
@@ -270,10 +267,7 @@ impl HashedPassword {
         if parts.len() < 5 {
             return Err(HashedPasswordError::FormatNotValid {
                 algorithm: variant.to_string(),
-                reason: format!(
-                    "must have at least 5 parts separated by '$', got {}",
-                    parts.len()
-                ),
+                reason: format!("must have at least 5 parts separated by '$', got {}", parts.len()),
             });
         }
 
@@ -359,50 +353,35 @@ mod tests {
         fn test_invalid_bcrypt_prefix() {
             let hash = "$3a$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW";
             let result = HashedPassword::new(hash.to_string(), HashingAlgorithm::Bcrypt);
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
         fn test_invalid_bcrypt_length_too_short() {
             let hash = "$2a$12$short";
             let result = HashedPassword::new(hash.to_string(), HashingAlgorithm::Bcrypt);
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::LengthNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::LengthNotValid { .. })));
         }
 
         #[test]
         fn test_invalid_bcrypt_length_too_long() {
             let hash = "$2a$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUWExtra";
             let result = HashedPassword::new(hash.to_string(), HashingAlgorithm::Bcrypt);
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::LengthNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::LengthNotValid { .. })));
         }
 
         #[test]
         fn test_invalid_bcrypt_cost_too_low() {
             let hash = "$2a$03$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW";
             let result = HashedPassword::new(hash.to_string(), HashingAlgorithm::Bcrypt);
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
         fn test_invalid_bcrypt_cost_too_high() {
             let hash = "$2a$32$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW";
             let result = HashedPassword::new(hash.to_string(), HashingAlgorithm::Bcrypt);
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
@@ -466,10 +445,7 @@ mod tests {
                 hash.to_string(),
                 HashingAlgorithm::Argon(ArgonVariant::Argon2id),
             );
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
@@ -479,10 +455,7 @@ mod tests {
                 hash.to_string(),
                 HashingAlgorithm::Argon(ArgonVariant::Argon2id),
             );
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
@@ -492,10 +465,7 @@ mod tests {
                 hash.to_string(),
                 HashingAlgorithm::Argon(ArgonVariant::Argon2id),
             );
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
@@ -505,10 +475,7 @@ mod tests {
                 hash.to_string(),
                 HashingAlgorithm::Argon(ArgonVariant::Argon2id),
             );
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
@@ -518,10 +485,7 @@ mod tests {
                 hash.to_string(),
                 HashingAlgorithm::Argon(ArgonVariant::Argon2id),
             );
-            assert!(matches!(
-                result,
-                Err(HashedPasswordError::FormatNotValid { .. })
-            ));
+            assert!(matches!(result, Err(HashedPasswordError::FormatNotValid { .. })));
         }
 
         #[test]
@@ -534,10 +498,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(hashed.value(), hash);
-            assert_eq!(
-                hashed.algorithm(),
-                HashingAlgorithm::Argon(ArgonVariant::Argon2id)
-            );
+            assert_eq!(hashed.algorithm(), HashingAlgorithm::Argon(ArgonVariant::Argon2id));
         }
     }
 
@@ -553,14 +514,8 @@ mod tests {
         #[test]
         fn test_hashing_algorithm_display() {
             assert_eq!(HashingAlgorithm::Bcrypt.to_string(), "bcrypt");
-            assert_eq!(
-                HashingAlgorithm::Argon(ArgonVariant::Argon2d).to_string(),
-                "argon2d"
-            );
-            assert_eq!(
-                HashingAlgorithm::Argon(ArgonVariant::Argon2i).to_string(),
-                "argon2i"
-            );
+            assert_eq!(HashingAlgorithm::Argon(ArgonVariant::Argon2d).to_string(), "argon2d");
+            assert_eq!(HashingAlgorithm::Argon(ArgonVariant::Argon2i).to_string(), "argon2i");
             assert_eq!(
                 HashingAlgorithm::Argon(ArgonVariant::Argon2id).to_string(),
                 "argon2id"

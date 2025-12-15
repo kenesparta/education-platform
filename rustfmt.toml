@@ -44,10 +44,10 @@ reorder_modules = true
 
 # Function parameter layout
 fn_params_layout = "Tall"
-fn_call_width = 60
+fn_call_width = 70
 
 # Struct literal formatting
-struct_lit_width = 18
+struct_lit_width = 20
 struct_variant_width = 35
 
 # ============================================================================

@@ -234,9 +234,7 @@ impl Dni {
         let expected_numeric = NUMERIC_SERIES[index];
         let expected_alpha = ALPHA_SERIES[index];
         if validation_char != expected_numeric && validation_char != expected_alpha {
-            return Err(DniError::IncorrectValidationDigit(
-                validation_char.to_string(),
-            ));
+            return Err(DniError::IncorrectValidationDigit(validation_char.to_string()));
         }
 
         Ok(())
@@ -380,10 +378,7 @@ mod tests {
     #[test]
     fn test_dni_incorrect_verification_digit() {
         let result = Dni::new("12345678-9".to_string());
-        assert!(matches!(
-            result,
-            Err(DniError::IncorrectValidationDigit { .. })
-        ));
+        assert!(matches!(result, Err(DniError::IncorrectValidationDigit { .. })));
     }
 
     #[test]
@@ -406,10 +401,7 @@ mod tests {
     #[test]
     fn test_dni_verification_algorithm_alpha() {
         let result = Dni::new("00000001-I".to_string());
-        assert!(
-            result.is_ok(),
-            "DNI 00000001-I should be valid (alpha equivalent)"
-        );
+        assert!(result.is_ok(), "DNI 00000001-I should be valid (alpha equivalent)");
     }
 
     #[test]
@@ -623,28 +615,19 @@ mod tests {
         let dni_alpha = Dni::new("00000001-I".to_string()).unwrap();
 
         assert_eq!(dni_numeric.value(), dni_alpha.value());
-        assert_ne!(
-            dni_numeric.verification_char(),
-            dni_alpha.verification_char()
-        );
+        assert_ne!(dni_numeric.verification_char(), dni_alpha.verification_char());
     }
 
     #[test]
     fn test_dni_incorrect_verification_numeric_when_should_be_alpha() {
         let result = Dni::new("00000001-0".to_string());
-        assert!(matches!(
-            result,
-            Err(DniError::IncorrectValidationDigit { .. })
-        ));
+        assert!(matches!(result, Err(DniError::IncorrectValidationDigit { .. })));
     }
 
     #[test]
     fn test_dni_incorrect_verification_alpha_when_should_be_different() {
         let result = Dni::new("00000001-A".to_string());
-        assert!(matches!(
-            result,
-            Err(DniError::IncorrectValidationDigit { .. })
-        ));
+        assert!(matches!(result, Err(DniError::IncorrectValidationDigit { .. })));
     }
 
     #[test]
@@ -727,9 +710,6 @@ mod tests {
         let dni_with_spaces = Dni::new("  12345678-1  ".to_string()).unwrap();
 
         assert_eq!(dni_trimmed.value(), dni_with_spaces.value());
-        assert_eq!(
-            dni_trimmed.verification_char(),
-            dni_with_spaces.verification_char()
-        );
+        assert_eq!(dni_trimmed.verification_char(), dni_with_spaces.verification_char());
     }
 }

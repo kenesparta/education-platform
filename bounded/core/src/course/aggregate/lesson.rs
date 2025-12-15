@@ -285,12 +285,8 @@ mod tests {
 
         #[test]
         fn test_new_with_empty_name_returns_error() {
-            let result = Lesson::new(
-                "".to_string(),
-                3600,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            );
+            let result =
+                Lesson::new("".to_string(), 3600, "https://example.com/video.mp4".to_string(), 0);
 
             assert!(result.is_err());
             assert!(matches!(result, Err(LessonError::NameError(_))));
@@ -298,12 +294,8 @@ mod tests {
 
         #[test]
         fn test_new_with_invalid_url_returns_error() {
-            let result = Lesson::new(
-                "Valid Name".to_string(),
-                3600,
-                "not-a-valid-url".to_string(),
-                0,
-            );
+            let result =
+                Lesson::new("Valid Name".to_string(), 3600, "not-a-valid-url".to_string(), 0);
 
             assert!(result.is_err());
             assert!(matches!(result, Err(LessonError::VideoUrlError(_))));
@@ -337,12 +329,8 @@ mod tests {
 
         #[test]
         fn test_new_with_name_too_short_returns_error() {
-            let result = Lesson::new(
-                "AB".to_string(),
-                3600,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            );
+            let result =
+                Lesson::new("AB".to_string(), 3600, "https://example.com/video.mp4".to_string(), 0);
 
             assert!(result.is_err());
             assert!(matches!(result, Err(LessonError::NameError(_))));
@@ -364,12 +352,8 @@ mod tests {
         #[test]
         fn test_new_with_name_too_long_returns_error() {
             let long_name = "A".repeat(51);
-            let result = Lesson::new(
-                long_name,
-                3600,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            );
+            let result =
+                Lesson::new(long_name, 3600, "https://example.com/video.mp4".to_string(), 0);
 
             assert!(result.is_err());
             assert!(matches!(result, Err(LessonError::NameError(_))));
@@ -378,12 +362,8 @@ mod tests {
         #[test]
         fn test_new_with_name_at_max_length() {
             let max_name = "A".repeat(50);
-            let result = Lesson::new(
-                max_name.clone(),
-                3600,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            );
+            let result =
+                Lesson::new(max_name.clone(), 3600, "https://example.com/video.mp4".to_string(), 0);
 
             assert!(result.is_ok());
             assert_eq!(result.unwrap().name().as_str(), max_name);

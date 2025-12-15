@@ -172,10 +172,7 @@ mod tests {
     #[test]
     fn test_has_min_length_below_minimum() {
         let result = Validator::has_min_length("hi", 3);
-        assert!(matches!(
-            result,
-            Err(ValidatorError::MinLength { min: 3, actual: 2 })
-        ));
+        assert!(matches!(result, Err(ValidatorError::MinLength { min: 3, actual: 2 })));
     }
 
     #[test]

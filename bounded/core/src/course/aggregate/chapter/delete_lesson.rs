@@ -259,20 +259,12 @@ mod tests {
 
     #[test]
     fn test_remove_lesson_updates_total_duration() {
-        let lesson1 = Lesson::new(
-            "First".to_string(),
-            1800,
-            "https://example.com/1.mp4".to_string(),
-            0,
-        )
-        .unwrap();
-        let lesson2 = Lesson::new(
-            "Second".to_string(),
-            1200,
-            "https://example.com/2.mp4".to_string(),
-            1,
-        )
-        .unwrap();
+        let lesson1 =
+            Lesson::new("First".to_string(), 1800, "https://example.com/1.mp4".to_string(), 0)
+                .unwrap();
+        let lesson2 =
+            Lesson::new("Second".to_string(), 1200, "https://example.com/2.mp4".to_string(), 1)
+                .unwrap();
         let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson1, lesson2]).unwrap();
 
         let first = &chapter.lessons()[0].clone();

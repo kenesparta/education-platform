@@ -257,12 +257,8 @@ mod tests {
 
     #[test]
     fn test_new_with_empty_first_name_returns_error() {
-        let result = PersonName::new(
-            "".to_string(),
-            Some("Michael".to_string()),
-            "Doe".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("".to_string(), Some("Michael".to_string()), "Doe".to_string(), None);
 
         assert!(result.is_err());
     }
@@ -281,12 +277,8 @@ mod tests {
 
     #[test]
     fn test_new_with_empty_last_name_returns_error() {
-        let result = PersonName::new(
-            "John".to_string(),
-            Some("Michael".to_string()),
-            "".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("John".to_string(), Some("Michael".to_string()), "".to_string(), None);
 
         assert!(result.is_err());
     }
@@ -305,24 +297,16 @@ mod tests {
 
     #[test]
     fn test_new_with_empty_middle_name_returns_error() {
-        let result = PersonName::new(
-            "John".to_string(),
-            Some("".to_string()),
-            "Doe".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("John".to_string(), Some("".to_string()), "Doe".to_string(), None);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_new_with_whitespace_only_middle_name_returns_error() {
-        let result = PersonName::new(
-            "John".to_string(),
-            Some("   ".to_string()),
-            "Doe".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("John".to_string(), Some("   ".to_string()), "Doe".to_string(), None);
 
         assert!(result.is_err());
     }
@@ -404,24 +388,15 @@ mod tests {
 
     #[test]
     fn test_new_with_all_names_whitespace_only_returns_error() {
-        let result = PersonName::new(
-            "   ".to_string(),
-            Some("   ".to_string()),
-            "   ".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("   ".to_string(), Some("   ".to_string()), "   ".to_string(), None);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_new_with_mixed_whitespace_and_empty_returns_error() {
-        let result = PersonName::new(
-            "".to_string(),
-            Some("   ".to_string()),
-            "".to_string(),
-            None,
-        );
+        let result = PersonName::new("".to_string(), Some("   ".to_string()), "".to_string(), None);
 
         assert!(result.is_err());
     }
@@ -475,12 +450,8 @@ mod tests {
 
     #[test]
     fn test_new_with_two_character_middle_name_returns_ok() {
-        let result = PersonName::new(
-            "John".to_string(),
-            Some("Ma".to_string()),
-            "Doe".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("John".to_string(), Some("Ma".to_string()), "Doe".to_string(), None);
 
         assert!(result.is_ok());
     }
@@ -528,24 +499,16 @@ mod tests {
     #[test]
     fn test_new_with_middle_name_exceeding_max_length_returns_error() {
         let too_long_name = "a".repeat(102);
-        let result = PersonName::new(
-            "John".to_string(),
-            Some(too_long_name),
-            "Doe".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("John".to_string(), Some(too_long_name), "Doe".to_string(), None);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_new_with_all_names_at_minimum_valid_length_returns_ok() {
-        let result = PersonName::new(
-            "Jo".to_string(),
-            Some("Ma".to_string()),
-            "Do".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("Jo".to_string(), Some("Ma".to_string()), "Do".to_string(), None);
 
         assert!(result.is_ok());
     }
@@ -577,12 +540,8 @@ mod tests {
     #[test]
     fn test_new_with_middle_name_too_long_after_trim_returns_error() {
         let too_long_name = format!("  {}  ", "a".repeat(102));
-        let result = PersonName::new(
-            "John".to_string(),
-            Some(too_long_name),
-            "Doe".to_string(),
-            None,
-        );
+        let result =
+            PersonName::new("John".to_string(), Some(too_long_name), "Doe".to_string(), None);
 
         assert!(result.is_err());
     }
@@ -606,12 +565,8 @@ mod tests {
 
     #[test]
     fn test_new_with_empty_second_last_name_returns_error() {
-        let result = PersonName::new(
-            "María".to_string(),
-            None,
-            "García".to_string(),
-            Some("".to_string()),
-        );
+        let result =
+            PersonName::new("María".to_string(), None, "García".to_string(), Some("".to_string()));
 
         assert!(result.is_err());
     }
