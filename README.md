@@ -15,8 +15,8 @@ The project follows a modular monorepo pattern with three main categories:
 Domain-specific modules that encapsulate business logic:
 
 - **`bounded/auth`**: Authentication bounded context containing user-related entities and logic
-- **`bounded/core`**: Core domain logic and shared domain primitives
-- **`bounded/common`**: Shared utilities and validators used across bounded contexts
+- **`bounded/core`**: Core domain with Course aggregate (chapters, lessons), Person entity, and domain operations
+- **`bounded/common`**: Shared value objects (Id, Name, Email, Duration, Date, Index, Url) and validators
 
 ### Entry Points (`cmd/`)
 
@@ -27,7 +27,7 @@ Executable applications:
 
 ## Prerequisites
 
-- Rust 1.80+ with edition 2024 support
+- Rust 1.90+ with edition 2024 support
 - Cargo (comes with Rust)
 
 ## Getting Started
@@ -92,10 +92,10 @@ cargo llvm-cov --workspace --lcov --output-path lcov.info  # LCOV format
 cargo llvm-cov --workspace --json --output-path coverage.json  # JSON format
 ```
 
-**Current Coverage:** ~96% overall
-- `bounded/common`: 96-100% coverage
-- `bounded/core`: Needs tests (0% coverage)
-- `bounded/auth`: Needs tests (0% coverage)
+**Test Summary:** 1,000+ tests across all crates
+- `bounded/common`: 629 tests (523 unit + 106 doc tests)
+- `bounded/core`: 378 tests (330 unit + 48 doc tests)
+- `bounded/auth`: 32 tests (25 unit + 7 doc tests)
 
 ### Code Quality
 
@@ -160,11 +160,25 @@ When contributing:
 
 ## Current Status
 
-This is an early-stage project with foundational implementations:
+This project has substantial domain implementations:
 
+### Core Domain (`bounded/core`)
+- **Course Aggregate**: Full course management with chapters and lessons
+  - Create, update, delete, and reorder chapters
+  - Create, update, delete, and reorder lessons
+  - Automatic duration and lesson count calculations
+- **Person Entity**: Person management with document validation and segment grouping
+- **Immutable Update Pattern**: All entities support `with_*` methods for safe updates
+
+### Common Utilities (`bounded/common`)
+- Value Objects: `Id`, `Name`, `SimpleName`, `Email`, `Duration`, `Date`, `Index`, `Url`
+- Document validation: DNI format validation
+- Comprehensive validation utilities
+
+### Authentication (`bounded/auth`)
 - User entity with basic authentication fields
-- Email validation utilities
-- Modular workspace structure established
+
+### Entry Points (`cmd/`)
 - API and site entry points (minimal implementations)
 
 ## License
