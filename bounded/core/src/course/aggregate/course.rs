@@ -1,7 +1,7 @@
 mod add_chapter;
 mod chapter_operations;
-mod getters;
 mod delete_chapter;
+mod getters;
 mod move_chapter;
 
 use crate::Chapter;
@@ -22,6 +22,12 @@ pub enum CourseError {
 
     #[error("Chapter with does not exist")]
     ChapterDoesNotExist,
+
+    #[error("The number of chapters is zero")]
+    NumberOfChaptersIsZero,
+
+    #[error("The number of lessons is zero")]
+    NumberOfLessonsIsZero,
 }
 
 /// A course containing multiple chapters.

@@ -202,13 +202,9 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_delete = chapter1.clone();
             let date = Date::new(2024, 6, 15).unwrap();
-            let course = Course::new(
-                "Test Course".to_string(),
-                Some(date),
-                0,
-                vec![chapter1, chapter2],
-            )
-            .unwrap();
+            let course =
+                Course::new("Test Course".to_string(), Some(date), 0, vec![chapter1, chapter2])
+                    .unwrap();
 
             let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
 
@@ -323,10 +319,7 @@ mod tests {
 
             let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(
-                updated_course.chapters()[0].name().as_str(),
-                "Special Chapter"
-            );
+            assert_eq!(updated_course.chapters()[0].name().as_str(), "Special Chapter");
             assert_eq!(updated_course.chapters()[0].lesson_quantity(), 1);
             assert_eq!(
                 updated_course.chapters()[0]
@@ -351,10 +344,7 @@ mod tests {
                 .unwrap();
 
             assert_eq!(course_after_second.chapter_quantity(), 1);
-            assert_eq!(
-                course_after_second.chapters()[0].name().as_str(),
-                "Chapter 3"
-            );
+            assert_eq!(course_after_second.chapters()[0].name().as_str(), "Chapter 3");
             assert_eq!(course_after_second.chapters()[0].index().value(), 0);
         }
 

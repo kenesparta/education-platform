@@ -1,5 +1,5 @@
 use super::{Chapter, Course, Date, Duration, SimpleName};
-use crate::CourseError;
+use crate::{CourseError, Lesson};
 
 impl Course {
     /// Returns the course name.
@@ -326,6 +326,77 @@ impl Course {
             .last()
             .ok_or(CourseError::CourseWithEmptyChapters)
     }
+
+    /// Returns all lessons from all chapters in the course.
+    ///
+    /// This method flattens the chapter structure and returns a vector containing
+    /// all lessons across all chapters in order. Each lesson is cloned from the
+    /// original chapter.
+    ///
+    /// # Errors
+    ///
+    /// Returns `CourseError::NumberOfChaptersIsZero` if the course has no chapters.
+    /// Returns `CourseError::NumberOfLessonsIsZero` if the course has no lessons.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{Course, Chapter, Lesson};
+    ///
+    /// let lesson1 = Lesson::new(
+    ///     "Introduction".to_string(),
+    ///     1800,
+    ///     "https://example.com/intro.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// let lesson2 = Lesson::new(
+    ///     "Basics".to_string(),
+    ///     1200,
+    ///     "https://example.com/basics.mp4".to_string(),
+    ///     1,
+    /// ).unwrap();
+    ///
+    /// let chapter1 = Chapter::new(
+    ///     "Getting Started".to_string(),
+    ///     0,
+    ///     vec![lesson1],
+    /// ).unwrap();
+    ///
+    /// let chapter2 = Chapter::new(
+    ///     "Fundamentals".to_string(),
+    ///     1,
+    ///     vec![lesson2],
+    /// ).unwrap();
+    ///
+    /// let course = Course::new(
+    ///     "Rust Programming".to_string(),
+    ///     None,
+    ///     0,
+    ///     vec![chapter1, chapter2],
+    /// ).unwrap();
+    ///
+    /// let all_lessons = course.lessons().unwrap();
+    /// assert_eq!(all_lessons.len(), 2);
+    /// assert_eq!(all_lessons[0].name().as_str(), "Introduction");
+    /// assert_eq!(all_lessons[1].name().as_str(), "Basics");
+    /// ```
+    pub fn lessons(&self) -> Result<Vec<Lesson>, CourseError> {
+        if self.chapter_quantity() == 0 {
+            return Err(CourseError::NumberOfChaptersIsZero);
+        }
+
+        if self.number_of_lessons() == 0 {
+            return Err(CourseError::NumberOfLessonsIsZero);
+        }
+
+        Ok(self
+            .chapters()
+            .iter()
+            .flat_map(|c| c.lessons())
+            .cloned()
+            .collect())
+    }
 }
 
 #[cfg(test)]
@@ -608,6 +679,260 @@ mod tests {
                 course.first_chapter().unwrap().id(),
                 course.last_chapter().unwrap().id()
             );
+        }
+    }
+
+    mod lessons {
+        use super::*;
+
+        #[test]
+        fn test_lessons_returns_all_lessons_from_single_chapter() {
+            let lessons = vec![
+                create_test_lesson("Lesson 1", 0),
+                create_test_lesson("Lesson 2", 1),
+                create_test_lesson("Lesson 3", 2),
+            ];
+            let chapter = Chapter::new("Chapter One".to_string(), 0, lessons).unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), 3);
+            assert_eq!(all_lessons[0].name().as_str(), "Lesson 1");
+            assert_eq!(all_lessons[1].name().as_str(), "Lesson 2");
+            assert_eq!(all_lessons[2].name().as_str(), "Lesson 3");
+        }
+
+        #[test]
+        fn test_lessons_flattens_multiple_chapters() {
+            let chapter1 = Chapter::new(
+                "Chapter One".to_string(),
+                0,
+                vec![
+                    create_test_lesson("Lesson 1", 0),
+                    create_test_lesson("Lesson 2", 1),
+                ],
+            )
+            .unwrap();
+            let chapter2 = Chapter::new(
+                "Chapter Two".to_string(),
+                1,
+                vec![
+                    create_test_lesson("Lesson 3", 0),
+                    create_test_lesson("Lesson 4", 1),
+                ],
+            )
+            .unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter1, chapter2])
+                    .unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), 4);
+            assert_eq!(all_lessons[0].name().as_str(), "Lesson 1");
+            assert_eq!(all_lessons[1].name().as_str(), "Lesson 2");
+            assert_eq!(all_lessons[2].name().as_str(), "Lesson 3");
+            assert_eq!(all_lessons[3].name().as_str(), "Lesson 4");
+        }
+
+        #[test]
+        fn test_lessons_preserves_order_across_chapters() {
+            let chapter1 = Chapter::new(
+                "First Chapter".to_string(),
+                0,
+                vec![create_test_lesson("First Lesson", 0)],
+            )
+            .unwrap();
+            let chapter2 = Chapter::new(
+                "Second Chapter".to_string(),
+                1,
+                vec![create_test_lesson("Second Lesson", 0)],
+            )
+            .unwrap();
+            let chapter3 = Chapter::new(
+                "Third Chapter".to_string(),
+                2,
+                vec![create_test_lesson("Third Lesson", 0)],
+            )
+            .unwrap();
+            let course = Course::new(
+                "Rust Programming".to_string(),
+                None,
+                0,
+                vec![chapter1, chapter2, chapter3],
+            )
+            .unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), 3);
+            assert_eq!(all_lessons[0].name().as_str(), "First Lesson");
+            assert_eq!(all_lessons[1].name().as_str(), "Second Lesson");
+            assert_eq!(all_lessons[2].name().as_str(), "Third Lesson");
+        }
+
+        #[test]
+        fn test_lessons_returns_cloned_lessons() {
+            let lesson = create_test_lesson("Test Lesson", 0);
+            let lesson_id = lesson.id();
+            let chapter = Chapter::new("Chapter One".to_string(), 0, vec![lesson]).unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), 1);
+            assert_eq!(all_lessons[0].id(), lesson_id);
+        }
+
+        #[test]
+        fn test_lessons_total_count_matches_number_of_lessons() {
+            let chapter1 = Chapter::new(
+                "Chapter One".to_string(),
+                0,
+                vec![
+                    create_test_lesson("Lesson 1", 0),
+                    create_test_lesson("Lesson 2", 1),
+                    create_test_lesson("Lesson 3", 2),
+                ],
+            )
+            .unwrap();
+            let chapter2 = Chapter::new(
+                "Chapter Two".to_string(),
+                1,
+                vec![
+                    create_test_lesson("Lesson 4", 0),
+                    create_test_lesson("Lesson 5", 1),
+                ],
+            )
+            .unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter1, chapter2])
+                    .unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), course.number_of_lessons() as usize);
+            assert_eq!(all_lessons.len(), 5);
+        }
+
+        #[test]
+        fn test_lessons_with_varied_lesson_counts() {
+            let chapter1 =
+                Chapter::new("Chapter One".to_string(), 0, vec![create_test_lesson("Lesson 1", 0)])
+                    .unwrap();
+            let chapter2 = Chapter::new(
+                "Chapter Two".to_string(),
+                1,
+                vec![
+                    create_test_lesson("Lesson 2", 0),
+                    create_test_lesson("Lesson 3", 1),
+                    create_test_lesson("Lesson 4", 2),
+                ],
+            )
+            .unwrap();
+            let chapter3 = Chapter::new(
+                "Chapter Three".to_string(),
+                2,
+                vec![
+                    create_test_lesson("Lesson 5", 0),
+                    create_test_lesson("Lesson 6", 1),
+                ],
+            )
+            .unwrap();
+            let course = Course::new(
+                "Rust Programming".to_string(),
+                None,
+                0,
+                vec![chapter1, chapter2, chapter3],
+            )
+            .unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), 6);
+        }
+
+        #[test]
+        fn test_lessons_preserves_lesson_properties() {
+            let lesson1 = Lesson::new(
+                "Custom Lesson".to_string(),
+                3600,
+                "https://example.com/custom.mp4".to_string(),
+                0,
+            )
+            .unwrap();
+            let lesson_id = lesson1.id();
+            let chapter = Chapter::new("Chapter One".to_string(), 0, vec![lesson1]).unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons[0].id(), lesson_id);
+            assert_eq!(all_lessons[0].name().as_str(), "Custom Lesson");
+            assert_eq!(all_lessons[0].duration().total_seconds(), 3600);
+            assert_eq!(all_lessons[0].video_url().as_str(), "https://example.com/custom.mp4");
+        }
+
+        #[test]
+        fn test_lessons_maintains_lesson_indices_from_original_chapters() {
+            let lesson1 = create_test_lesson("Lesson 1", 0);
+            let lesson2 = create_test_lesson("Lesson 2", 1);
+            let chapter1 =
+                Chapter::new("Chapter One".to_string(), 0, vec![lesson1, lesson2]).unwrap();
+
+            let lesson3 = create_test_lesson("Lesson 3", 0);
+            let lesson4 = create_test_lesson("Lesson 4", 1);
+            let chapter2 =
+                Chapter::new("Chapter Two".to_string(), 1, vec![lesson3, lesson4]).unwrap();
+
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter1, chapter2])
+                    .unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons[0].index().value(), 0);
+            assert_eq!(all_lessons[1].index().value(), 1);
+            assert_eq!(all_lessons[2].index().value(), 0);
+            assert_eq!(all_lessons[3].index().value(), 1);
+        }
+
+        #[test]
+        fn test_lessons_from_course_with_single_lesson_per_chapter() {
+            let chapters = vec![
+                Chapter::new("Chapter 1".to_string(), 0, vec![create_test_lesson("Lesson 1", 0)])
+                    .unwrap(),
+                Chapter::new("Chapter 2".to_string(), 1, vec![create_test_lesson("Lesson 2", 0)])
+                    .unwrap(),
+                Chapter::new("Chapter 3".to_string(), 2, vec![create_test_lesson("Lesson 3", 0)])
+                    .unwrap(),
+            ];
+            let course = Course::new("Rust Programming".to_string(), None, 0, chapters).unwrap();
+
+            let all_lessons = course.lessons().unwrap();
+
+            assert_eq!(all_lessons.len(), 3);
+            assert_eq!(all_lessons[0].name().as_str(), "Lesson 1");
+            assert_eq!(all_lessons[1].name().as_str(), "Lesson 2");
+            assert_eq!(all_lessons[2].name().as_str(), "Lesson 3");
+        }
+
+        #[test]
+        fn test_lessons_returns_independent_vector() {
+            let lesson = create_test_lesson("Test Lesson", 0);
+            let chapter = Chapter::new("Chapter One".to_string(), 0, vec![lesson]).unwrap();
+            let course =
+                Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
+
+            let lessons1 = course.lessons().unwrap();
+            let lessons2 = course.lessons().unwrap();
+
+            assert_eq!(lessons1.len(), lessons2.len());
+            assert_eq!(lessons1[0].id(), lessons2[0].id());
         }
     }
 }
