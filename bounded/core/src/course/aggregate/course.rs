@@ -3,8 +3,9 @@ mod chapter_operations;
 mod delete_chapter;
 mod getters;
 mod move_chapter;
+mod update_lesson;
 
-use crate::Chapter;
+use crate::{Chapter, ChapterError};
 use education_platform_common::{
     Date, Duration, Entity, Id, SimpleName, SimpleNameConfig, SimpleNameError,
 };
@@ -17,11 +18,17 @@ pub enum CourseError {
     #[error("Chapter name validation failed: {0}")]
     NameError(#[from] SimpleNameError),
 
+    #[error("Chapter error: {0}")]
+    ChapterError(#[from] ChapterError),
+
     #[error("Course must have at least one chapter")]
     CourseWithEmptyChapters,
 
     #[error("Chapter with does not exist")]
     ChapterDoesNotExist,
+
+    #[error("Lesson does not exist")]
+    LessonDoesNotExist,
 
     #[error("The number of chapters is zero")]
     NumberOfChaptersIsZero,
