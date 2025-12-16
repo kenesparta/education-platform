@@ -38,11 +38,7 @@ impl Chapter {
     /// assert_eq!(updated.lessons().len(), 2);
     /// assert_eq!(updated.lessons()[1].name().as_str(), "Second");
     /// ```
-    pub fn add_lesson(
-        &self,
-        lesson: Lesson,
-        index: Option<Index>,
-    ) -> Result<Chapter, ChapterError> {
+    pub fn add_lesson(&self, lesson: Lesson, index: Option<Index>) -> Result<Self, ChapterError> {
         let position = index
             .map(|idx| idx.value().min(self.lessons.len()))
             .unwrap_or(self.lessons.len());
@@ -54,7 +50,7 @@ impl Chapter {
 
         let lessons = Self::reassign_index_lessons(&lessons)?;
 
-        Ok(Chapter {
+        Ok(Self {
             lessons,
             ..self.clone()
         })

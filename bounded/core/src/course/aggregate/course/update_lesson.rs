@@ -49,7 +49,7 @@ impl Course {
     /// let updated_course = course.update_lesson(updated_lesson).unwrap();
     /// assert_eq!(updated_course.chapters()[0].lessons()[0].name().as_str(), "Introduction Updated");
     /// ```
-    pub fn update_lesson(&self, lesson: Lesson) -> Result<Course, CourseError> {
+    pub fn update_lesson(&self, lesson: Lesson) -> Result<Self, CourseError> {
         let chapter_with_lesson = self
             .chapters
             .iter()

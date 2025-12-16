@@ -41,7 +41,7 @@ impl Chapter {
     /// assert_eq!(updated.lessons().len(), 1);
     /// assert_eq!(updated.lessons()[0].name().as_str(), "Second");
     /// ```
-    pub fn delete_lesson(&self, lesson: &Lesson) -> Result<Chapter, ChapterError> {
+    pub fn delete_lesson(&self, lesson: &Lesson) -> Result<Self, ChapterError> {
         let lessons: Vec<Lesson> = self
             .lessons
             .iter()
@@ -51,7 +51,7 @@ impl Chapter {
 
         let lessons = Self::reassign_index_lessons(&lessons)?;
 
-        Ok(Chapter {
+        Ok(Self {
             lessons,
             ..self.clone()
         })

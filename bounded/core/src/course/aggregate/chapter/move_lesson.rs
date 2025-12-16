@@ -46,7 +46,7 @@ impl Chapter {
     /// assert_eq!(updated.lessons()[0].name().as_str(), "Second");
     /// assert_eq!(updated.lessons()[1].name().as_str(), "First");
     /// ```
-    pub fn move_lesson(&self, lesson: &Lesson, to_index: Index) -> Result<Chapter, ChapterError> {
+    pub fn move_lesson(&self, lesson: &Lesson, to_index: Index) -> Result<Self, ChapterError> {
         self.delete_lesson(lesson)?
             .add_lesson(lesson.clone(), Some(to_index))
     }
@@ -90,7 +90,7 @@ impl Chapter {
     /// assert_eq!(updated.lessons()[0].name().as_str(), "Second");
     /// assert_eq!(updated.lessons()[1].name().as_str(), "First");
     /// ```
-    pub fn move_lesson_up(&self, lesson: &Lesson) -> Result<Chapter, ChapterError> {
+    pub fn move_lesson_up(&self, lesson: &Lesson) -> Result<Self, ChapterError> {
         let current_position = self
             .lessons
             .iter()
@@ -143,7 +143,7 @@ impl Chapter {
     /// assert_eq!(updated.lessons()[0].name().as_str(), "Second");
     /// assert_eq!(updated.lessons()[1].name().as_str(), "First");
     /// ```
-    pub fn move_lesson_down(&self, lesson: &Lesson) -> Result<Chapter, ChapterError> {
+    pub fn move_lesson_down(&self, lesson: &Lesson) -> Result<Self, ChapterError> {
         let current_position = self
             .lessons
             .iter()

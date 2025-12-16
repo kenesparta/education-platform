@@ -8,7 +8,7 @@ impl Chapter {
     ///
     /// # Errors
     ///
-    /// Returns `ChapterError::ChapterWithEmptyLessons` if the lessons vector is empty.
+    /// Returns `ChapterError::ChapterWithEmptyLessons` if the lesson vector is empty.
     pub(super) fn reassign_index_lessons(lessons: &[Lesson]) -> Result<Vec<Lesson>, ChapterError> {
         if lessons.is_empty() {
             return Err(ChapterError::ChapterWithEmptyLessons);
@@ -33,7 +33,7 @@ impl Chapter {
     ///
     /// # Errors
     ///
-    /// Returns `ChapterError::ChapterWithEmptyLessons` if the lessons vector is empty.
+    /// Returns `ChapterError::ChapterWithEmptyLessons` if the lesson vector is empty.
     pub(super) fn order_lessons(mut lessons: Vec<Lesson>) -> Result<Vec<Lesson>, ChapterError> {
         if lessons.is_empty() {
             return Err(ChapterError::ChapterWithEmptyLessons);

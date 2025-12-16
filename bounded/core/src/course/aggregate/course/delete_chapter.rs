@@ -51,7 +51,7 @@ impl Course {
     /// assert_eq!(updated_course.chapter_quantity(), 1);
     /// assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
     /// ```
-    pub fn delete_chapter(&self, chapter: &Chapter) -> Result<Course, CourseError> {
+    pub fn delete_chapter(&self, chapter: &Chapter) -> Result<Self, CourseError> {
         let chapters: Vec<Chapter> = self
             .chapters
             .iter()
@@ -62,7 +62,7 @@ impl Course {
         let chapters = Self::reassign_index_chapters(&chapters)?;
         let (duration, number_of_lessons) = Self::calculate_totals(&chapters, Duration::default());
 
-        Ok(Course {
+        Ok(Self {
             chapters,
             duration,
             number_of_lessons,

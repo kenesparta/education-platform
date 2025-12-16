@@ -42,7 +42,7 @@ impl Course {
     /// let updated_course = course.move_chapter(&chapter_to_move, Index::new(2)).unwrap();
     /// assert_eq!(updated_course.chapters()[2].id(), chapter_to_move.id());
     /// ```
-    pub fn move_chapter(&self, chapter: &Chapter, to_index: Index) -> Result<Course, CourseError> {
+    pub fn move_chapter(&self, chapter: &Chapter, to_index: Index) -> Result<Self, CourseError> {
         self.delete_chapter(chapter)?
             .add_chapter(chapter.clone(), Some(to_index))
     }
@@ -83,7 +83,7 @@ impl Course {
     /// let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
     /// assert_eq!(updated_course.chapters()[0].id(), chapter_to_move.id());
     /// ```
-    pub fn move_chapter_up(&self, chapter: &Chapter) -> Result<Course, CourseError> {
+    pub fn move_chapter_up(&self, chapter: &Chapter) -> Result<Self, CourseError> {
         let current_position = self
             .chapters
             .iter()
@@ -133,7 +133,7 @@ impl Course {
     /// let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
     /// assert_eq!(updated_course.chapters()[1].id(), chapter_to_move.id());
     /// ```
-    pub fn move_chapter_down(&self, chapter: &Chapter) -> Result<Course, CourseError> {
+    pub fn move_chapter_down(&self, chapter: &Chapter) -> Result<Self, CourseError> {
         let current_position = self
             .chapters
             .iter()

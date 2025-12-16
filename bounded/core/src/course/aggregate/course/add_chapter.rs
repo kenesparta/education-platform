@@ -2,11 +2,7 @@ use crate::{Chapter, Course, CourseError};
 use education_platform_common::{Duration, Index};
 
 impl Course {
-    pub fn add_chapter(
-        &self,
-        chapter: Chapter,
-        index: Option<Index>,
-    ) -> Result<Course, CourseError> {
+    pub fn add_chapter(&self, chapter: Chapter, index: Option<Index>) -> Result<Self, CourseError> {
         let position = index
             .map(|idx| idx.value().min(self.chapters.len()))
             .unwrap_or(self.chapters.len());
@@ -19,7 +15,7 @@ impl Course {
         let chapters = Self::reassign_index_chapters(&chapters)?;
         let (duration, number_of_lessons) = Self::calculate_totals(&chapters, Duration::default());
 
-        Ok(Course {
+        Ok(Self {
             chapters,
             duration,
             number_of_lessons,
