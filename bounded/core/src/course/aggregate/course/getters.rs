@@ -1,4 +1,5 @@
 use super::{Chapter, Course, Date, Duration, SimpleName};
+use crate::CourseError;
 
 impl Course {
     /// Returns the course name.
@@ -222,6 +223,10 @@ impl Course {
 
     /// Returns a reference to the first chapter in this course.
     ///
+    /// # Errors
+    ///
+    /// Returns `CourseError::CourseWithEmptyChapters` if the course has no chapters.
+    ///
     /// # Examples
     ///
     /// ```
@@ -260,16 +265,21 @@ impl Course {
     ///     vec![chapter1, chapter2],
     /// ).unwrap();
     ///
-    /// assert_eq!(course.first_chapter().name().as_str(), "Getting Started");
+    /// assert_eq!(course.first_chapter().unwrap().name().as_str(), "Getting Started");
     /// ```
     #[inline]
-    #[must_use]
-    pub fn first_chapter(&self) -> &Chapter {
-        &self.chapters[0]
+    pub fn first_chapter(&self) -> Result<&Chapter, CourseError> {
+        self.chapters
+            .first()
+            .ok_or(CourseError::CourseWithEmptyChapters)
     }
 
     /// Returns a reference to the last chapter in this course.
     ///
+    /// # Errors
+    ///
+    /// Returns `CourseError::CourseWithEmptyChapters` if the course has no chapters.
+    ///
     /// # Examples
     ///
     /// ```
@@ -308,12 +318,13 @@ impl Course {
     ///     vec![chapter1, chapter2],
     /// ).unwrap();
     ///
-    /// assert_eq!(course.last_chapter().name().as_str(), "Advanced Topics");
+    /// assert_eq!(course.last_chapter().unwrap().name().as_str(), "Advanced Topics");
     /// ```
     #[inline]
-    #[must_use]
-    pub fn last_chapter(&self) -> &Chapter {
-        &self.chapters[self.chapters.len() - 1]
+    pub fn last_chapter(&self) -> Result<&Chapter, CourseError> {
+        self.chapters
+            .last()
+            .ok_or(CourseError::CourseWithEmptyChapters)
     }
 }
 
@@ -527,7 +538,7 @@ mod tests {
             ];
             let course = Course::new("Rust Programming".to_string(), None, 0, chapters).unwrap();
 
-            assert_eq!(course.first_chapter().name().as_str(), "First Chapter");
+            assert_eq!(course.first_chapter().unwrap().name().as_str(), "First Chapter");
         }
 
         #[test]
@@ -536,7 +547,7 @@ mod tests {
             let course =
                 Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
 
-            assert_eq!(course.first_chapter().name().as_str(), "Only Chapter");
+            assert_eq!(course.first_chapter().unwrap().name().as_str(), "Only Chapter");
         }
 
         #[test]
@@ -545,7 +556,7 @@ mod tests {
             let course =
                 Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let first = course.first_chapter();
+            let first = course.first_chapter().unwrap();
             assert_eq!(first.id(), course.chapters()[0].id());
         }
     }
@@ -561,7 +572,7 @@ mod tests {
             ];
             let course = Course::new("Rust Programming".to_string(), None, 0, chapters).unwrap();
 
-            assert_eq!(course.last_chapter().name().as_str(), "Last Chapter");
+            assert_eq!(course.last_chapter().unwrap().name().as_str(), "Last Chapter");
         }
 
         #[test]
@@ -570,7 +581,7 @@ mod tests {
             let course =
                 Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
 
-            assert_eq!(course.last_chapter().name().as_str(), "Only Chapter");
+            assert_eq!(course.last_chapter().unwrap().name().as_str(), "Only Chapter");
         }
 
         #[test]
@@ -579,7 +590,10 @@ mod tests {
             let course =
                 Course::new("Rust Programming".to_string(), None, 0, vec![chapter]).unwrap();
 
-            assert_eq!(course.first_chapter().id(), course.last_chapter().id());
+            assert_eq!(
+                course.first_chapter().unwrap().id(),
+                course.last_chapter().unwrap().id()
+            );
         }
 
         #[test]
@@ -590,7 +604,10 @@ mod tests {
             ];
             let course = Course::new("Rust Programming".to_string(), None, 0, chapters).unwrap();
 
-            assert_ne!(course.first_chapter().id(), course.last_chapter().id());
+            assert_ne!(
+                course.first_chapter().unwrap().id(),
+                course.last_chapter().unwrap().id()
+            );
         }
     }
 }
