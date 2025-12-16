@@ -1,6 +1,8 @@
 mod add_chapter;
 mod chapter_operations;
 mod getters;
+mod delete_chapter;
+mod move_chapter;
 
 use crate::Chapter;
 use education_platform_common::{
@@ -17,6 +19,9 @@ pub enum CourseError {
 
     #[error("Course must have at least one chapter")]
     CourseWithEmptyChapters,
+
+    #[error("Chapter with does not exist")]
+    ChapterDoesNotExist,
 }
 
 /// A course containing multiple chapters.
