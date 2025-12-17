@@ -1,4 +1,4 @@
-use crate::{CourseProgress, CourseProgressError};
+use crate::{CourseProgress, CourseProgressError, LessonProgress};
 use education_platform_common::{Date, Entity, Id};
 
 impl CourseProgress {
@@ -300,7 +300,11 @@ impl CourseProgress {
     /// ```
     #[must_use]
     pub fn select_next_lesson(&self) -> Self {
-        let current_index = self.find_selected_lesson_index();
+        let current_index = self
+            .lesson_progress
+            .iter()
+            .position(|lp| lp.id() == self.selected_lesson.id())
+            .unwrap_or(0);
 
         match self.lesson_progress.get(current_index + 1) {
             Some(next_lesson) => Self {
@@ -339,7 +343,11 @@ impl CourseProgress {
     /// ```
     #[must_use]
     pub fn select_previous_lesson(&self) -> Self {
-        let current_index = self.find_selected_lesson_index();
+        let current_index = self
+            .lesson_progress
+            .iter()
+            .position(|lp| lp.id() == self.selected_lesson.id())
+            .unwrap_or(0);
 
         if current_index == 0 {
             return self.clone();
@@ -354,66 +362,8 @@ impl CourseProgress {
         }
     }
 
-    /// Returns true if the selected lesson is the first lesson.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    ///
-    /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
-    /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
-    ///
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     None,
-    /// ).unwrap();
-    ///
-    /// assert!(progress.is_first_lesson_selected());
-    /// ```
-    #[inline]
-    #[must_use]
-    pub fn is_first_lesson_selected(&self) -> bool {
-        self.find_selected_lesson_index() == 0
-    }
-
-    /// Returns true if the selected lesson is the last lesson.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
-    ///
-    /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
-    /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
-    /// let lesson2_id = lesson2.id();
-    ///
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     Some(lesson2_id),
-    /// ).unwrap();
-    ///
-    /// assert!(progress.is_last_lesson_selected());
-    /// ```
-    #[inline]
-    #[must_use]
-    pub fn is_last_lesson_selected(&self) -> bool {
-        self.find_selected_lesson_index() == self.lesson_progress.len().saturating_sub(1)
-    }
-
-    /// Finds the index of the currently selected lesson.
-    fn find_selected_lesson_index(&self) -> usize {
-        self.lesson_progress
-            .iter()
-            .position(|lp| lp.id() == self.selected_lesson.id())
-            .unwrap_or(0)
+    pub fn end_and_select_next_lesson(&self) -> Result<Self, CourseProgressError> {
+        Ok(self.end_selected_lesson()?.select_next_lesson())
     }
 }
 
@@ -944,76 +894,6 @@ mod tests {
         }
     }
 
-    mod is_first_lesson_selected {
-        use super::*;
-
-        #[test]
-        fn test_is_first_lesson_selected_true_at_start() {
-            let progress = create_test_progress();
-
-            assert!(progress.is_first_lesson_selected());
-        }
-
-        #[test]
-        fn test_is_first_lesson_selected_false_after_next() {
-            let progress = create_test_progress();
-
-            let updated = progress.select_next_lesson();
-
-            assert!(!updated.is_first_lesson_selected());
-        }
-
-        #[test]
-        fn test_is_first_lesson_selected_true_single_lesson() {
-            let lesson = create_test_lesson("Only", 1800);
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
-
-            assert!(progress.is_first_lesson_selected());
-        }
-    }
-
-    mod is_last_lesson_selected {
-        use super::*;
-
-        #[test]
-        fn test_is_last_lesson_selected_false_at_start() {
-            let progress = create_test_progress();
-
-            assert!(!progress.is_last_lesson_selected());
-        }
-
-        #[test]
-        fn test_is_last_lesson_selected_true_at_end() {
-            let progress = create_test_progress();
-
-            let at_end = progress.select_next_lesson().select_next_lesson();
-
-            assert!(at_end.is_last_lesson_selected());
-        }
-
-        #[test]
-        fn test_is_last_lesson_selected_true_single_lesson() {
-            let lesson = create_test_lesson("Only", 1800);
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
-
-            assert!(progress.is_last_lesson_selected());
-        }
-    }
-
     mod navigation_integration {
         use super::*;
 
@@ -1035,24 +915,6 @@ mod tests {
 
             let step4 = step3.select_previous_lesson();
             assert_eq!(step4.selected_lesson().id(), first_id);
-        }
-
-        #[test]
-        fn test_boundary_conditions() {
-            let progress = create_test_progress();
-            let first_id = progress.lesson_progress()[0].id();
-            let last_id = progress.lesson_progress()[2].id();
-
-            let at_start = progress.select_previous_lesson();
-            assert_eq!(at_start.selected_lesson().id(), first_id);
-            assert!(at_start.is_first_lesson_selected());
-
-            let at_end = progress
-                .select_next_lesson()
-                .select_next_lesson()
-                .select_next_lesson();
-            assert_eq!(at_end.selected_lesson().id(), last_id);
-            assert!(at_end.is_last_lesson_selected());
         }
     }
 }
