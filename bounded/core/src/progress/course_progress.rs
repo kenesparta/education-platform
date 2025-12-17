@@ -1,6 +1,10 @@
-use crate::LessonProgress;
+mod getters;
+mod lesson_operations;
+mod progress_calculations;
+
+use crate::{LessonProgress, LessonProgressError};
 use education_platform_common::{
-    Date, Email, EmailError, Entity, Id, SimpleName, SimpleNameConfig, SimpleNameError,
+    Date, Duration, Email, EmailError, Entity, Id, SimpleName, SimpleNameConfig, SimpleNameError,
 };
 use thiserror::Error;
 
@@ -13,6 +17,9 @@ pub enum CourseProgressError {
 
     #[error("Email validation failed: {0}")]
     EmailError(#[from] EmailError),
+
+    #[error("Lesson progress error validation failed: {0}")]
+    LessonError(#[from] LessonProgressError),
 
     #[error("Lessons can't be empty. At least one lesson must be added to the course.")]
     LessonsCantBeEmpty,
@@ -50,7 +57,7 @@ pub struct CourseProgress {
     id: Id,
     course_name: SimpleName,
     user_email: Email,
-    conclusion_date: Option<Date>,
+    date: Option<Date>,
     lesson_progress: Vec<LessonProgress>,
     selected_lesson: LessonProgress,
 }
@@ -94,7 +101,7 @@ impl CourseProgress {
         course_name: String,
         user_email: String,
         lesson_progress: Vec<LessonProgress>,
-        conclusion_date: Option<Date>,
+        date: Option<Date>,
         selected_lesson_id: Option<Id>,
     ) -> Result<Self, CourseProgressError> {
         let selected_lesson = Self::find_lesson_by_id(selected_lesson_id, &lesson_progress)?;
@@ -105,131 +112,10 @@ impl CourseProgress {
             id: Id::default(),
             course_name,
             user_email,
-            conclusion_date,
+            date,
             lesson_progress,
             selected_lesson,
         })
-    }
-
-    /// Returns the course name.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    ///
-    /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
-    /// let progress = CourseProgress::new(
-    ///     "My Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(progress.course_name().as_str(), "My Course");
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn course_name(&self) -> &SimpleName {
-        &self.course_name
-    }
-
-    /// Returns the user's email.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    ///
-    /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
-    /// let progress = CourseProgress::new(
-    ///     "My Course".to_string(),
-    ///     "student@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(progress.user_email().address(), "student@example.com");
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn user_email(&self) -> &Email {
-        &self.user_email
-    }
-
-    /// Returns the conclusion date if the course has been completed.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    ///
-    /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
-    /// let progress = CourseProgress::new(
-    ///     "My Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    /// ).unwrap();
-    ///
-    /// assert!(progress.conclusion_date().is_none());
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn conclusion_date(&self) -> Option<Date> {
-        self.conclusion_date
-    }
-
-    /// Returns a reference to all lesson progress records.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    ///
-    /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
-    /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
-    /// let progress = CourseProgress::new(
-    ///     "My Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     None,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(progress.lesson_progress().len(), 2);
-    /// ```
-    #[inline]
-    #[must_use]
-    pub fn lesson_progress(&self) -> &[LessonProgress] {
-        &self.lesson_progress
-    }
-
-    /// Returns the currently selected lesson.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    ///
-    /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
-    /// let progress = CourseProgress::new(
-    ///     "My Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(progress.selected_lesson().lesson_name().as_str(), "Intro");
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn selected_lesson(&self) -> &LessonProgress {
-        &self.selected_lesson
     }
 
     /// Finds a lesson by ID, or returns the first lesson if no ID is provided.
@@ -414,44 +300,54 @@ mod tests {
 
             assert_eq!(progress.selected_lesson().id(), lesson1_id);
         }
-    }
-
-    mod getters {
-        use super::*;
 
         #[test]
-        fn test_course_name_returns_name() {
-            let progress = create_test_progress();
+        fn test_new_generates_unique_id() {
+            let progress1 = create_test_progress();
+            let progress2 = create_test_progress();
 
-            assert_eq!(progress.course_name().as_str(), "Test Course");
+            assert_ne!(progress1.id(), progress2.id());
         }
 
         #[test]
-        fn test_user_email_returns_email() {
-            let progress = create_test_progress();
+        fn test_new_with_name_at_min_length() {
+            let lesson = create_test_lesson("Intro", 1800);
+            let progress = CourseProgress::new(
+                "ABC".to_string(),
+                "user@example.com".to_string(),
+                vec![lesson],
+                None,
+                None,
+            )
+            .unwrap();
 
-            assert_eq!(progress.user_email().address(), "test@example.com");
+            assert_eq!(progress.course_name().as_str(), "ABC");
         }
 
         #[test]
-        fn test_lesson_progress_returns_all_lessons() {
-            let progress = create_test_progress();
+        fn test_new_with_name_at_max_length() {
+            let lesson = create_test_lesson("Intro", 1800);
+            let name = "A".repeat(50);
+            let progress = CourseProgress::new(
+                name.clone(),
+                "user@example.com".to_string(),
+                vec![lesson],
+                None,
+                None,
+            )
+            .unwrap();
 
-            assert_eq!(progress.lesson_progress().len(), 2);
+            assert_eq!(progress.course_name().as_str(), name);
         }
 
         #[test]
-        fn test_selected_lesson_returns_lesson() {
-            let progress = create_test_progress();
+        fn test_new_with_name_too_long_returns_error() {
+            let lesson = create_test_lesson("Intro", 1800);
+            let name = "A".repeat(51);
+            let result =
+                CourseProgress::new(name, "user@example.com".to_string(), vec![lesson], None, None);
 
-            assert_eq!(progress.selected_lesson().lesson_name().as_str(), "Lesson 1");
-        }
-
-        #[test]
-        fn test_id_returns_valid_id() {
-            let progress = create_test_progress();
-
-            assert!(progress.id().timestamp_ms() > 0);
+            assert!(matches!(result, Err(CourseProgressError::NameError(_))));
         }
     }
 
@@ -463,14 +359,6 @@ mod tests {
             let progress = create_test_progress();
 
             assert!(progress.id().timestamp_ms() > 0);
-        }
-
-        #[test]
-        fn test_each_instance_has_unique_id() {
-            let progress1 = create_test_progress();
-            let progress2 = create_test_progress();
-
-            assert_ne!(progress1.id(), progress2.id());
         }
     }
 

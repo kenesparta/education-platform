@@ -281,7 +281,7 @@ impl LessonProgress {
     #[inline]
     #[must_use]
     pub const fn is_completed(&self) -> bool {
-        self.start_date.is_some() && self.end_date.is_some()
+        self.end_date.is_some()
     }
 
     /// Starts the lesson by setting the start date to today.
