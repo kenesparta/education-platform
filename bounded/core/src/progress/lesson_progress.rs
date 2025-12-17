@@ -79,12 +79,12 @@ impl LessonProgress {
     /// assert!(zero_duration.is_err());
     /// ```
     pub fn new(
-        name: String,
+        lesson_name: String,
         duration: u64,
         start_date: Option<Date>,
         end_date: Option<Date>,
     ) -> Result<Self, LessonProgressError> {
-        let lesson_name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
+        let lesson_name = SimpleName::with_config(lesson_name, SimpleNameConfig::new(3, 50))?;
         let duration = Duration::from_seconds(duration);
         if duration.is_zero() {
             return Err(LessonProgressError::DurationCantBeZero);
