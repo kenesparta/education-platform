@@ -1,6 +1,8 @@
 mod getters;
-mod lesson_operations;
+mod lesson_lifecycle;
+mod lesson_navigation;
 mod progress_calculations;
+mod selected_lesson;
 
 use crate::{LessonProgress, LessonProgressError};
 use education_platform_common::{
