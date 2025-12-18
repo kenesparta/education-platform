@@ -59,7 +59,7 @@ impl Course {
     ///
     /// # Errors
     ///
-    /// Returns `CourseError::CourseWithEmptyChapters` if the chapters vector is empty.
+    /// Returns `CourseError::CourseWithEmptyChapters` if the chapter vector is empty.
     pub(super) fn order_chapter(mut chapters: Vec<Chapter>) -> Result<Vec<Chapter>, CourseError> {
         if chapters.is_empty() {
             return Err(CourseError::CourseWithEmptyChapters);

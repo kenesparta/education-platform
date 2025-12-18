@@ -1,3 +1,7 @@
-mod aggregate;
+mod chapter;
+mod course;
+mod lesson;
 
-pub use aggregate::*;
+pub use chapter::*;
+pub use course::*;
+pub use lesson::*;
