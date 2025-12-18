@@ -374,6 +374,29 @@ impl Date {
         (other.inner - self.inner).num_days()
     }
 
+    /// Returns the number of seconds between two dates.
+    ///
+    /// Converts the day difference to seconds (days * 86400).
+    /// Returns a positive number if `other` is after `self`, negative otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_common::Date;
+    ///
+    /// let start = Date::new(2024, 1, 1).unwrap();
+    /// let end = Date::new(2024, 1, 2).unwrap();
+    /// assert_eq!(start.seconds_until(&end), 86400);
+    /// assert_eq!(end.seconds_until(&start), -86400);
+    ///
+    /// let same = Date::new(2024, 1, 1).unwrap();
+    /// assert_eq!(start.seconds_until(&same), 0);
+    /// ```
+    #[must_use]
+    pub fn seconds_until(&self, other: &Self) -> i64 {
+        (other.inner - self.inner).num_seconds()
+    }
+
     /// Formats the date as ISO 8601 (YYYY-MM-DD).
     ///
     /// # Examples

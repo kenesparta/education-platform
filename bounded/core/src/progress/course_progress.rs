@@ -1,3 +1,4 @@
+mod fraud_verification;
 mod getters;
 mod lesson_lifecycle;
 mod lesson_navigation;

@@ -175,20 +175,20 @@ impl CourseProgress {
 mod tests {
     use super::*;
     use crate::LessonProgress;
-    use education_platform_common::Date;
+    use education_platform_common::DateTime;
 
     fn create_test_lesson(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
     }
 
     fn create_started_lesson(name: &str, duration: u64) -> LessonProgress {
-        let start = Date::new(2024, 1, 1).unwrap();
+        let start = DateTime::new(2024, 1, 1, 10, 0, 0).unwrap();
         LessonProgress::new(name.to_string(), duration, Some(start), None).unwrap()
     }
 
     fn create_completed_lesson(name: &str, duration: u64) -> LessonProgress {
-        let start = Date::new(2024, 1, 1).unwrap();
-        let end = Date::new(2024, 1, 2).unwrap();
+        let start = DateTime::new(2024, 1, 1, 10, 0, 0).unwrap();
+        let end = DateTime::new(2024, 1, 2, 10, 0, 0).unwrap();
         LessonProgress::new(name.to_string(), duration, Some(start), Some(end)).unwrap()
     }
 

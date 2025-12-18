@@ -1,4 +1,5 @@
 mod date;
+mod datetime;
 mod document;
 mod duration;
 mod email;
@@ -13,6 +14,7 @@ mod url;
 mod validator;
 
 pub use date::*;
+pub use datetime::*;
 pub use document::*;
 pub use duration::*;
 pub use email::*;

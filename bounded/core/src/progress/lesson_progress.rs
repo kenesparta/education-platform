@@ -1,5 +1,5 @@
 use education_platform_common::{
-    Date, Duration, Entity, Id, SimpleName, SimpleNameConfig, SimpleNameError,
+    DateTime, Duration, Entity, Id, SimpleName, SimpleNameConfig, SimpleNameError,
 };
 use thiserror::Error;
 
@@ -46,8 +46,8 @@ pub struct LessonProgress {
     id: Id,
     lesson_name: SimpleName,
     duration: Duration,
-    start_date: Option<Date>,
-    end_date: Option<Date>,
+    start_date: Option<DateTime>,
+    end_date: Option<DateTime>,
 }
 
 impl LessonProgress {
@@ -81,8 +81,8 @@ impl LessonProgress {
     pub fn new(
         lesson_name: String,
         duration: u64,
-        start_date: Option<Date>,
-        end_date: Option<Date>,
+        start_date: Option<DateTime>,
+        end_date: Option<DateTime>,
     ) -> Result<Self, LessonProgressError> {
         let lesson_name = SimpleName::with_config(lesson_name, SimpleNameConfig::new(3, 50))?;
         let duration = Duration::from_seconds(duration);
@@ -143,7 +143,7 @@ impl LessonProgress {
         self.duration
     }
 
-    /// Returns the start date if the lesson has been started.
+    /// Returns the start datetime if the lesson has been started.
     ///
     /// # Examples
     ///
@@ -164,11 +164,11 @@ impl LessonProgress {
     /// ```
     #[inline]
     #[must_use]
-    pub const fn start_date(&self) -> Option<Date> {
-        self.start_date
+    pub fn start_date(&self) -> Option<&DateTime> {
+        self.start_date.as_ref()
     }
 
-    /// Returns the end date if the lesson has been completed.
+    /// Returns the end datetime if the lesson has been completed.
     ///
     /// # Examples
     ///
@@ -186,8 +186,8 @@ impl LessonProgress {
     /// ```
     #[inline]
     #[must_use]
-    pub const fn end_date(&self) -> Option<Date> {
-        self.end_date
+    pub fn end_date(&self) -> Option<&DateTime> {
+        self.end_date.as_ref()
     }
 
     /// Returns true if the lesson has been started.
@@ -284,9 +284,9 @@ impl LessonProgress {
         self.end_date.is_some()
     }
 
-    /// Starts the lesson by setting the start date to today.
+    /// Starts the lesson by setting the start datetime to now.
     ///
-    /// If the lesson is already started, returns a clone with the same start date.
+    /// If the lesson is already started, returns a clone with the same start datetime.
     ///
     /// # Examples
     ///
@@ -311,12 +311,12 @@ impl LessonProgress {
         }
 
         Self {
-            start_date: Some(Date::today()),
+            start_date: Some(DateTime::now()),
             ..self.clone()
         }
     }
 
-    /// Ends the lesson by setting the end date to today.
+    /// Ends the lesson by setting the end datetime to now.
     ///
     /// # Errors
     ///
@@ -354,7 +354,7 @@ impl LessonProgress {
         }
 
         Ok(Self {
-            end_date: Some(Date::today()),
+            end_date: Some(DateTime::now()),
             ..self.clone()
         })
     }
@@ -434,19 +434,19 @@ mod tests {
 
         #[test]
         fn test_new_with_start_date() {
-            let start = Date::new(2024, 1, 15).unwrap();
+            let start = DateTime::new(2024, 1, 15, 10, 30, 0).unwrap();
             let progress =
                 LessonProgress::new("Variables".to_string(), 3600, Some(start), None).unwrap();
 
             assert!(progress.has_started());
             assert!(!progress.has_ended());
-            assert_eq!(progress.start_date(), Some(start));
+            assert_eq!(progress.start_date(), Some(&start));
         }
 
         #[test]
         fn test_new_with_both_dates() {
-            let start = Date::new(2024, 1, 15).unwrap();
-            let end = Date::new(2024, 1, 16).unwrap();
+            let start = DateTime::new(2024, 1, 15, 10, 0, 0).unwrap();
+            let end = DateTime::new(2024, 1, 16, 11, 0, 0).unwrap();
             let progress =
                 LessonProgress::new("Completed Lesson".to_string(), 1800, Some(start), Some(end))
                     .unwrap();
