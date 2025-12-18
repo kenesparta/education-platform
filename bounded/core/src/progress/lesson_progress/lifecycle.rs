@@ -2,7 +2,7 @@ use super::{LessonProgress, LessonProgressError};
 use education_platform_common::DateTime;
 
 impl LessonProgress {
-    /// Starts the lesson by setting the start datetime to now.
+    /// Starts the lesson by setting the start datetime now.
     ///
     /// If the lesson is already started, returns a clone with the same start datetime.
     ///
@@ -34,7 +34,7 @@ impl LessonProgress {
         }
     }
 
-    /// Ends the lesson by setting the end datetime to now.
+    /// Ends the lesson by setting the end datetime now.
     ///
     /// # Errors
     ///
@@ -53,7 +53,7 @@ impl LessonProgress {
     ///     None,
     /// ).unwrap();
     ///
-    /// // Cannot end unstarted lesson
+    /// // Cannot end an unstarted lesson
     /// let result = progress.end();
     /// assert!(result.is_err());
     ///
