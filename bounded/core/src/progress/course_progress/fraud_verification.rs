@@ -1,5 +1,7 @@
 use crate::CourseProgress;
 
+const MIN_COMPLETION_RATIO: f64 = 0.2;
+
 impl CourseProgress {
     /// Calculates a fraud risk score based on lesson completion patterns.
     ///
@@ -48,25 +50,26 @@ impl CourseProgress {
             return 0;
         }
 
-        let (suspicious, evaluated) = lessons
+        let (suspicious_count, total_evaluated) = lessons
             .windows(2)
             .filter_map(|window| {
                 let current_start = window[0].start_date()?;
                 let next_start = window[1].start_date()?;
+                let min_expected_gap =
+                    (window[0].duration().total_seconds() as f64 * MIN_COMPLETION_RATIO) as i64;
+                let actual_gap = current_start.seconds_until(next_start).abs();
 
-                let min_expected = (window[0].duration().total_seconds() as f64 * 0.2) as i64;
-                let actual = current_start.seconds_until(next_start).abs();
-
-                Some(actual < min_expected)
+                Some(actual_gap < min_expected_gap)
             })
             .fold((0u64, 0u64), |(suspicious, total), is_suspicious| {
                 (suspicious + u64::from(is_suspicious), total + 1)
             });
 
-        match evaluated {
-            0 => 0,
-            _ => (suspicious * 100) / evaluated,
+        if total_evaluated == 0 {
+            return 0;
         }
+
+        (suspicious_count * 100) / total_evaluated
     }
 }
 
@@ -344,7 +347,7 @@ mod tests {
         fn test_seconds_precision_exactly_at_threshold() {
             // 15-min lesson (900s) requires 180s (3 min) minimum gap
             let time1 = DateTime::new(2024, 1, 15, 10, 0, 0).unwrap();
-            let time2 = DateTime::new(2024, 1, 15, 10, 3, 0).unwrap(); // exactly 180s gap
+            let time2 = DateTime::new(2024, 1, 15, 10, 3, 0).unwrap();
 
             let lesson1 = create_lesson_with_start("Part 1", DURATION_15_MIN, time1);
             let lesson2 = create_lesson_with_start("Part 2", DURATION_15_MIN, time2);
