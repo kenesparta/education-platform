@@ -1,26 +1,38 @@
 {
   "hooks": {
-    "post-tool-use": [
+    "PostToolUse": [
       {
-        "tool": "write-file",
-        "glob": "**/*.rs",
-        "command": "cargo fmt 2>/dev/null || true"
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cargo fmt 2>/dev/null || true"
+          }
+        ]
       },
       {
-        "tool": "write-file",
-        "glob": "bounded/**/*.rs",
-        "command": "cargo check --quiet 2>&1 | head -20 || true"
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cargo check --quiet 2>&1 | head -20 || true"
+          }
+        ]
       }
     ],
-    "pre-tool-use": [
+    "PreToolUse": [
       {
-        "tool": "write-file",
-        "glob": "**/*.rs",
-        "command": "echo 'Checking for unwrap/expect usage...' && (grep -q '\\.unwrap()\\|\\.expect(' \"$FILE\" 2>/dev/null && ! grep -B5 -A5 '#\\[cfg(test)\\]' \"$FILE\" | grep -q '\\.unwrap()\\|\\.expect(' && echo 'WARNING: Found unwrap/expect outside test code. Consider using Result<T,E> instead.' || true) || true"
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Checking for unwrap/expect usage...' && (grep -q '\\.unwrap()\\|\\.expect(' \"$CLAUDE_FILE_PATH\" 2>/dev/null && ! grep -B5 -A5 '#\\[cfg(test)\\]' \"$CLAUDE_FILE_PATH\" | grep -q '\\.unwrap()\\|\\.expect(' && echo 'WARNING: Found unwrap/expect outside test code. Consider using Result<T,E> instead.' || true) || true"
+          }
+        ]
       }
     ]
   },
-  "environment-variables": {
+  "env": {
     "RUST_BACKTRACE": "1",
     "RUST_LOG": "info"
   }
