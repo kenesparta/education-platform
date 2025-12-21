@@ -20,14 +20,13 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson1, lesson2])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// let updated = progress.select_lesson(lesson2_id).unwrap();
     /// assert_eq!(updated.selected_lesson().id(), lesson2_id);
@@ -56,14 +55,13 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson1, lesson2])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// let next = progress.select_next_lesson();
     /// assert_eq!(next.selected_lesson().id(), lesson2_id);
@@ -102,14 +100,14 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     Some(lesson2_id),
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson1, lesson2])
+    ///     .selected_lesson_id(lesson2_id)
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// let prev = progress.select_previous_lesson();
     /// assert_eq!(prev.selected_lesson().id(), lesson1_id);
@@ -151,14 +149,13 @@ impl CourseProgress {
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// let found = progress.one_lesson_progress(lesson_id).unwrap();
     /// assert_eq!(found.id(), lesson_id);
@@ -194,27 +191,23 @@ mod tests {
         let lesson1 = create_test_lesson("Lesson 1", 1800);
         let lesson2 = create_test_lesson("Lesson 2", 2400);
         let lesson3 = create_test_lesson("Lesson 3", 3000);
-        CourseProgress::new(
-            "Test Course".to_string(),
-            "test@example.com".to_string(),
-            vec![lesson1, lesson2, lesson3],
-            None,
-            None,
-            create_test_dispatcher(),
-        )
-        .unwrap()
+        CourseProgress::builder()
+            .course_name("Test Course")
+            .user_email("test@example.com")
+            .lessons(vec![lesson1, lesson2, lesson3])
+            .event_dispatcher(create_test_dispatcher())
+            .build()
+            .unwrap()
     }
 
     fn create_progress(lessons: Vec<LessonProgress>) -> CourseProgress {
-        CourseProgress::new(
-            "Course".to_string(),
-            "user@example.com".to_string(),
-            lessons,
-            None,
-            None,
-            create_test_dispatcher(),
-        )
-        .unwrap()
+        CourseProgress::builder()
+            .course_name("Course")
+            .user_email("user@example.com")
+            .lessons(lessons)
+            .event_dispatcher(create_test_dispatcher())
+            .build()
+            .unwrap()
     }
 
     mod select_lesson {
@@ -318,15 +311,14 @@ mod tests {
             let lesson2 = create_test_lesson("Lesson 2", 2400);
             let lesson2_id = lesson2.id();
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                Some(lesson2_id),
-                create_test_dispatcher(),
-            )
-            .unwrap();
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson1, lesson2])
+                .selected_lesson_id(lesson2_id)
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
 
             let updated = progress.select_previous_lesson();
 

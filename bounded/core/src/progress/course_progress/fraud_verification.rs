@@ -21,14 +21,13 @@ impl CourseProgress {
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 900, None, None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 1200, None, None).unwrap();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     None,
-    ///     dispatcher.clone(),
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson1, lesson2])
+    ///     .event_dispatcher(dispatcher.clone())
+    ///     .build()
+    ///     .unwrap();
     /// assert_eq!(progress.fraud_risk_score(), 0);
     ///
     /// // Lessons started at same time (suspicious)
@@ -36,14 +35,13 @@ impl CourseProgress {
     /// let start = DateTime::new(2024, 1, 1, 10, 0, 0).unwrap();
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, Some(start), None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 1800, Some(start), None).unwrap();
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson1, lesson2],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson1, lesson2])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     /// assert_eq!(progress.fraud_risk_score(), 100);
     /// ```
     #[must_use]
@@ -105,15 +103,13 @@ mod tests {
     }
 
     fn create_progress(name: &str, email: &str, lessons: Vec<LessonProgress>) -> CourseProgress {
-        CourseProgress::new(
-            name.to_string(),
-            email.to_string(),
-            lessons,
-            None,
-            None,
-            create_test_dispatcher(),
-        )
-        .unwrap()
+        CourseProgress::builder()
+            .course_name(name)
+            .user_email(email)
+            .lessons(lessons)
+            .event_dispatcher(create_test_dispatcher())
+            .build()
+            .unwrap()
     }
 
     mod fraud_risk_score {

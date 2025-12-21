@@ -2,7 +2,7 @@ use super::{LessonProgress, LessonProgressError};
 use education_platform_common::DateTime;
 
 impl LessonProgress {
-    /// Starts the lesson by setting the start datetime now.
+    /// Starts the lesson by setting the start datetime today.
     ///
     /// If the lesson is already started, returns a clone with the same start datetime.
     ///
@@ -29,12 +29,12 @@ impl LessonProgress {
         }
 
         Self {
-            start_date: Some(DateTime::now()),
+            start_date: Some(DateTime::today()),
             ..self.clone()
         }
     }
 
-    /// Ends the lesson by setting the end datetime now.
+    /// Ends the lesson by setting the end datetime today.
     ///
     /// # Errors
     ///
@@ -72,7 +72,7 @@ impl LessonProgress {
         }
 
         Ok(Self {
-            end_date: Some(DateTime::now()),
+            end_date: Some(DateTime::today()),
             ..self.clone()
         })
     }

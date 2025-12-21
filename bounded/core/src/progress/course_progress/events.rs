@@ -108,15 +108,13 @@ mod tests {
                 events_clone.lock().unwrap().push(event.clone());
             });
 
-            let progress = CourseProgress::new(
-                "Test Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-                dispatcher,
-            )
-            .unwrap();
+            let progress = CourseProgress::builder()
+                .course_name("Test Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson])
+                .event_dispatcher(dispatcher)
+                .build()
+                .unwrap();
 
             progress.publish_ended();
 

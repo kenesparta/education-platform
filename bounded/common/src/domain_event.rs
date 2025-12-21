@@ -23,7 +23,7 @@ type Observer<E> = Arc<dyn Fn(&E) + Send + Sync>;
 ///
 /// let event = UserCreated {
 ///     user_id: 42,
-///     occurred_at: DateTime::now(),
+///     occurred_at: DateTime::today(),
 /// };
 ///
 /// dispatcher.notify(&event);
@@ -69,9 +69,7 @@ impl<E> DomainEventDispatcher<E> {
     /// Notifies all registered observers about an event.
     pub fn notify(&self, event: &E) {
         let observers = self.observers.read().unwrap_or_else(|e| e.into_inner());
-        for observer in observers.iter() {
-            observer(event);
-        }
+        observers.iter().for_each(|observer| observer(event));
     }
 
     /// Returns the number of registered observers.

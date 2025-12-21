@@ -127,11 +127,11 @@ impl DateTime {
     /// ```
     /// use education_platform_common::DateTime;
     ///
-    /// let now = DateTime::now();
+    /// let now = DateTime::today();
     /// assert!(now.year() >= 2024);
     /// ```
     #[must_use]
-    pub fn now() -> Self {
+    pub fn today() -> Self {
         Self {
             inner: Local::now().naive_local(),
         }
@@ -459,7 +459,7 @@ mod tests {
 
         #[test]
         fn test_now_returns_valid_datetime() {
-            let now = DateTime::now();
+            let now = DateTime::today();
             assert!(now.year() >= 2024);
             assert!((1..=12).contains(&now.month()));
             assert!((1..=31).contains(&now.day()));

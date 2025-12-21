@@ -1,8 +1,8 @@
 use crate::{CourseProgress, CourseProgressError};
-use education_platform_common::{Date, Entity, Id};
+use education_platform_common::{Date, DateTime, Entity, Id};
 
 impl CourseProgress {
-    /// Starts a lesson by setting its start date to today.
+    /// Starts a lesson by setting its start creation_date to today.
     ///
     /// If the lesson is already started, it remains unchanged.
     /// If the lesson ID is not found, the progress is returned unchanged.
@@ -17,14 +17,13 @@ impl CourseProgress {
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// let updated = progress.start_lesson(lesson_id);
     /// assert!(updated.lesson_progress()[0].has_started());
@@ -44,11 +43,11 @@ impl CourseProgress {
             *lesson = started;
         }
 
-        new_self.date = Some(Date::today());
+        new_self.creation_date = Some(DateTime::today());
         new_self
     }
 
-    /// Ends a lesson by setting its end date to today.
+    /// Ends a lesson by setting its end creation_date to today.
     ///
     /// Returns an error if the lesson hasn't been started yet.
     /// If the course is already completed, returns unchanged.
@@ -67,14 +66,13 @@ impl CourseProgress {
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// // Must start before ending
     /// let started = progress.start_lesson(lesson_id);
@@ -99,7 +97,7 @@ impl CourseProgress {
             *lesson = ended;
         }
 
-        new_self.date = Some(Date::today());
+        new_self.creation_date = Some(DateTime::today());
         Ok(new_self)
     }
 
@@ -117,14 +115,13 @@ impl CourseProgress {
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// let started = progress.start_lesson(lesson_id);
     /// let restarted = started.restart_lesson(lesson_id);
@@ -146,7 +143,7 @@ impl CourseProgress {
             *lesson = restarted;
         }
 
-        new_self.date = Some(Date::today());
+        new_self.creation_date = Some(DateTime::today());
         new_self
     }
 
@@ -171,14 +168,13 @@ impl CourseProgress {
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, Some(start), None).unwrap();
     /// let lesson_id = lesson.id();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::new(
-    ///     "Course".to_string(),
-    ///     "user@example.com".to_string(),
-    ///     vec![lesson],
-    ///     None,
-    ///     None,
-    ///     dispatcher,
-    /// ).unwrap();
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
     ///
     /// // Toggle to complete
     /// let completed = progress.toggle_lesson_completion(lesson_id).unwrap();
@@ -225,27 +221,23 @@ mod tests {
         let lesson1 = create_test_lesson("Lesson 1", 1800);
         let lesson2 = create_test_lesson("Lesson 2", 2400);
         let lesson3 = create_test_lesson("Lesson 3", 3000);
-        CourseProgress::new(
-            "Test Course".to_string(),
-            "test@example.com".to_string(),
-            vec![lesson1, lesson2, lesson3],
-            None,
-            None,
-            create_test_dispatcher(),
-        )
-        .unwrap()
+        CourseProgress::builder()
+            .course_name("Test Course")
+            .user_email("test@example.com")
+            .lessons(vec![lesson1, lesson2, lesson3])
+            .event_dispatcher(create_test_dispatcher())
+            .build()
+            .unwrap()
     }
 
     fn create_progress(lessons: Vec<LessonProgress>) -> CourseProgress {
-        CourseProgress::new(
-            "Course".to_string(),
-            "user@example.com".to_string(),
-            lessons,
-            None,
-            None,
-            create_test_dispatcher(),
-        )
-        .unwrap()
+        CourseProgress::builder()
+            .course_name("Course")
+            .user_email("user@example.com")
+            .lessons(lessons)
+            .event_dispatcher(create_test_dispatcher())
+            .build()
+            .unwrap()
     }
 
     mod start_lesson {
@@ -270,7 +262,7 @@ mod tests {
 
             let updated = progress.start_lesson(lesson_id);
 
-            assert!(updated.conclusion_date().is_some());
+            assert!(updated.creation_date().is_some());
         }
 
         #[test]
@@ -354,7 +346,7 @@ mod tests {
 
             let updated = progress.end_lesson(lesson_id).unwrap();
 
-            assert!(updated.conclusion_date().is_some());
+            assert!(updated.creation_date().is_some());
         }
     }
 
@@ -392,7 +384,7 @@ mod tests {
 
             let updated = progress.restart_lesson(lesson_id);
 
-            assert!(updated.conclusion_date().is_some());
+            assert!(updated.creation_date().is_some());
         }
     }
 
