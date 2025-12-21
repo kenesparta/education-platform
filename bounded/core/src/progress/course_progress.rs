@@ -1,3 +1,4 @@
+mod events;
 mod fraud_verification;
 mod getters;
 mod lesson_lifecycle;
@@ -5,10 +6,14 @@ mod lesson_navigation;
 mod progress_calculations;
 mod selected_lesson;
 
+pub use events::CourseEnded;
+
 use crate::{LessonProgress, LessonProgressError};
 use education_platform_common::{
-    Date, Duration, Email, EmailError, Entity, Id, SimpleName, SimpleNameConfig, SimpleNameError,
+    Date, DomainEventDispatcher, Duration, Email, EmailError, Entity, Id, SimpleName,
+    SimpleNameConfig, SimpleNameError,
 };
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Error types for Course Progress validation failures.
@@ -40,10 +45,13 @@ pub enum CourseProgressError {
 /// # Examples
 ///
 /// ```
-/// use education_platform_core::{CourseProgress, LessonProgress};
+/// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+/// use education_platform_common::DomainEventDispatcher;
+/// use std::sync::Arc;
 ///
 /// let lesson1 = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
 /// let lesson2 = LessonProgress::new("Basics".to_string(), 2400, None, None).unwrap();
+/// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
 ///
 /// let progress = CourseProgress::new(
 ///     "Rust Fundamentals".to_string(),
@@ -51,6 +59,7 @@ pub enum CourseProgressError {
 ///     vec![lesson1, lesson2],
 ///     None,
 ///     None,
+///     dispatcher,
 /// ).unwrap();
 ///
 /// assert_eq!(progress.course_name().as_str(), "Rust Fundamentals");
@@ -63,6 +72,7 @@ pub struct CourseProgress {
     date: Option<Date>,
     lesson_progress: Vec<LessonProgress>,
     selected_lesson: LessonProgress,
+    event_dispatcher: Arc<DomainEventDispatcher<CourseEnded>>,
 }
 
 impl CourseProgress {
@@ -78,9 +88,12 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Variables".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     ///
     /// let progress = CourseProgress::new(
     ///     "Rust Course".to_string(),
@@ -88,15 +101,18 @@ impl CourseProgress {
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// // Empty lessons rejected
+    /// let dispatcher2 = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let empty = CourseProgress::new(
     ///     "Empty Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![],
     ///     None,
     ///     None,
+    ///     dispatcher2,
     /// );
     /// assert!(empty.is_err());
     /// ```
@@ -106,6 +122,7 @@ impl CourseProgress {
         lesson_progress: Vec<LessonProgress>,
         date: Option<Date>,
         selected_lesson_id: Option<Id>,
+        event_dispatcher: Arc<DomainEventDispatcher<CourseEnded>>,
     ) -> Result<Self, CourseProgressError> {
         let selected_lesson = Self::find_lesson_by_id(selected_lesson_id, &lesson_progress)?;
         let course_name = SimpleName::with_config(course_name, SimpleNameConfig::new(3, 50))?;
@@ -118,6 +135,7 @@ impl CourseProgress {
             date,
             lesson_progress,
             selected_lesson,
+            event_dispatcher,
         })
     }
 
@@ -158,6 +176,10 @@ impl Eq for CourseProgress {}
 mod tests {
     use super::*;
 
+    fn create_test_dispatcher() -> Arc<DomainEventDispatcher<CourseEnded>> {
+        Arc::new(DomainEventDispatcher::new())
+    }
+
     fn create_test_lesson(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
     }
@@ -171,6 +193,7 @@ mod tests {
             vec![lesson1, lesson2],
             None,
             None,
+            create_test_dispatcher(),
         )
         .unwrap()
     }
@@ -187,6 +210,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -205,6 +229,7 @@ mod tests {
                 vec![lesson],
                 Some(date),
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -223,6 +248,7 @@ mod tests {
                 vec![lesson1, lesson2],
                 None,
                 Some(lesson2_id),
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -237,6 +263,7 @@ mod tests {
                 vec![],
                 None,
                 None,
+                create_test_dispatcher(),
             );
 
             assert!(matches!(result, Err(CourseProgressError::LessonsCantBeEmpty)));
@@ -251,6 +278,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             );
 
             assert!(matches!(result, Err(CourseProgressError::NameError(_))));
@@ -265,6 +293,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             );
 
             assert!(matches!(result, Err(CourseProgressError::EmailError(_))));
@@ -281,6 +310,7 @@ mod tests {
                 vec![lesson],
                 None,
                 Some(unknown_id),
+                create_test_dispatcher(),
             );
 
             assert!(matches!(result, Err(CourseProgressError::LessonNotFound(_))));
@@ -298,6 +328,7 @@ mod tests {
                 vec![lesson1, lesson2],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -321,6 +352,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -337,6 +369,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -347,8 +380,14 @@ mod tests {
         fn test_new_with_name_too_long_returns_error() {
             let lesson = create_test_lesson("Intro", 1800);
             let name = "A".repeat(51);
-            let result =
-                CourseProgress::new(name, "user@example.com".to_string(), vec![lesson], None, None);
+            let result = CourseProgress::new(
+                name,
+                "user@example.com".to_string(),
+                vec![lesson],
+                None,
+                None,
+                create_test_dispatcher(),
+            );
 
             assert!(matches!(result, Err(CourseProgressError::NameError(_))));
         }

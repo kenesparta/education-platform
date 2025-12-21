@@ -9,15 +9,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert!(!progress.is_completed());
@@ -33,16 +37,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson1, lesson2],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.total_duration().total_seconds(), 4200);
@@ -61,15 +69,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// // No lessons ended yet
@@ -91,15 +103,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// // No lessons ended yet
@@ -121,15 +137,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.lessons_started_count(), 0);
@@ -148,15 +168,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.lessons_completed_count(), 0);
@@ -174,8 +198,13 @@ impl CourseProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::LessonProgress;
-    use education_platform_common::DateTime;
+    use crate::{CourseEnded, LessonProgress};
+    use education_platform_common::{DateTime, DomainEventDispatcher};
+    use std::sync::Arc;
+
+    fn create_test_dispatcher() -> Arc<DomainEventDispatcher<CourseEnded>> {
+        Arc::new(DomainEventDispatcher::new())
+    }
 
     fn create_test_lesson(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
@@ -201,6 +230,19 @@ mod tests {
             vec![lesson1, lesson2],
             None,
             None,
+            create_test_dispatcher(),
+        )
+        .unwrap()
+    }
+
+    fn create_progress(lessons: Vec<LessonProgress>) -> CourseProgress {
+        CourseProgress::new(
+            "Course".to_string(),
+            "user@example.com".to_string(),
+            lessons,
+            None,
+            None,
+            create_test_dispatcher(),
         )
         .unwrap()
     }
@@ -220,14 +262,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed", 1800);
             let lesson2 = create_test_lesson("Not Completed", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert!(!progress.is_completed());
         }
@@ -237,14 +272,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Lesson 1", 1800);
             let lesson2 = create_completed_lesson("Lesson 2", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert!(progress.is_completed());
         }
@@ -253,14 +281,7 @@ mod tests {
         fn test_is_completed_single_completed_lesson() {
             let lesson = create_completed_lesson("Only Lesson", 1800);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             assert!(progress.is_completed());
         }
@@ -269,14 +290,7 @@ mod tests {
         fn test_is_completed_started_but_not_ended() {
             let lesson = create_started_lesson("Started Only", 1800);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             assert!(!progress.is_completed());
         }
@@ -289,14 +303,7 @@ mod tests {
         fn test_total_duration_single_lesson() {
             let lesson = create_test_lesson("Lesson", 3600);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             assert_eq!(progress.total_duration().total_seconds(), 3600);
         }
@@ -314,14 +321,7 @@ mod tests {
                 .map(|i| create_test_lesson(&format!("Lesson {}", i), 1000))
                 .collect();
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                lessons,
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(lessons);
 
             assert_eq!(progress.total_duration().total_seconds(), 5000);
         }
@@ -342,14 +342,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed", 1800);
             let lesson2 = create_test_lesson("Not Completed", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.duration_lessons_ended().total_seconds(), 1800);
         }
@@ -359,14 +352,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Lesson 1", 1800);
             let lesson2 = create_completed_lesson("Lesson 2", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.duration_lessons_ended().total_seconds(), 4200);
         }
@@ -375,14 +361,7 @@ mod tests {
         fn test_duration_lessons_ended_started_not_ended() {
             let lesson = create_started_lesson("Started Only", 1800);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             assert_eq!(progress.duration_lessons_ended().total_seconds(), 0);
         }
@@ -403,14 +382,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Lesson 1", 1800);
             let lesson2 = create_completed_lesson("Lesson 2", 1800);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.percentage_completed(), 100);
         }
@@ -420,14 +392,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed", 1800);
             let lesson2 = create_test_lesson("Not Completed", 1800);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.percentage_completed(), 50);
         }
@@ -437,14 +402,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Short Completed", 1000);
             let lesson2 = create_test_lesson("Long Not Completed", 3000);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.percentage_completed(), 25);
         }
@@ -454,14 +412,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed", 1000);
             let lesson2 = create_test_lesson("Not Completed", 3560);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.percentage_completed(), 21);
         }
@@ -482,14 +433,7 @@ mod tests {
             let lesson1 = create_started_lesson("Started", 1800);
             let lesson2 = create_test_lesson("Not Started", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.lessons_started_count(), 1);
         }
@@ -499,14 +443,7 @@ mod tests {
             let lesson1 = create_started_lesson("Started 1", 1800);
             let lesson2 = create_started_lesson("Started 2", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.lessons_started_count(), 2);
         }
@@ -516,14 +453,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed", 1800);
             let lesson2 = create_started_lesson("Started", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.lessons_started_count(), 2);
         }
@@ -544,14 +474,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed", 1800);
             let lesson2 = create_test_lesson("Not Completed", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.lessons_completed_count(), 1);
         }
@@ -561,14 +484,7 @@ mod tests {
             let lesson1 = create_completed_lesson("Completed 1", 1800);
             let lesson2 = create_completed_lesson("Completed 2", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.lessons_completed_count(), 2);
         }
@@ -578,14 +494,7 @@ mod tests {
             let lesson1 = create_started_lesson("Started Only", 1800);
             let lesson2 = create_completed_lesson("Completed", 2400);
 
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson1, lesson2],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson1, lesson2]);
 
             assert_eq!(progress.lessons_completed_count(), 1);
         }

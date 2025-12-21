@@ -6,15 +6,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.course_name().as_str(), "My Course");
@@ -30,15 +34,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "student@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.user_email().address(), "student@example.com");
@@ -54,15 +62,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert!(progress.conclusion_date().is_none());
@@ -78,16 +90,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson1, lesson2],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.lesson_progress().len(), 2);
@@ -103,15 +119,19 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.selected_lesson().lesson_name().as_str(), "Intro");
@@ -127,16 +147,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
     ///
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "My Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson1, lesson2],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// assert_eq!(progress.lesson_count(), 2);
@@ -151,7 +175,13 @@ impl CourseProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use education_platform_common::Entity;
+    use crate::CourseEnded;
+    use education_platform_common::{DomainEventDispatcher, Entity};
+    use std::sync::Arc;
+
+    fn create_test_dispatcher() -> Arc<DomainEventDispatcher<CourseEnded>> {
+        Arc::new(DomainEventDispatcher::new())
+    }
 
     fn create_test_lesson(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
@@ -166,6 +196,7 @@ mod tests {
             vec![lesson1, lesson2],
             None,
             None,
+            create_test_dispatcher(),
         )
         .unwrap()
     }
@@ -189,6 +220,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -215,6 +247,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -242,6 +275,7 @@ mod tests {
                 vec![lesson],
                 Some(date),
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -271,6 +305,7 @@ mod tests {
                 vec![lesson1, lesson2, lesson3],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -288,6 +323,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -310,6 +346,7 @@ mod tests {
                 vec![lesson1, lesson2],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -328,6 +365,7 @@ mod tests {
                 vec![lesson1, lesson2],
                 None,
                 Some(lesson2_id),
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -354,6 +392,7 @@ mod tests {
                 vec![lesson],
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -372,6 +411,7 @@ mod tests {
                 lessons,
                 None,
                 None,
+                create_test_dispatcher(),
             )
             .unwrap();
 

@@ -10,17 +10,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// let updated = progress.start_lesson(lesson_id);
@@ -57,17 +60,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// // Must start before ending
@@ -104,17 +110,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// let started = progress.start_lesson(lesson_id);
@@ -154,18 +163,21 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::{DateTime, Entity};
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DateTime, DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let start = DateTime::new(2024, 1, 1, 10, 0, 0).unwrap();
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, Some(start), None).unwrap();
     /// let lesson_id = lesson.id();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// // Toggle to complete
@@ -186,8 +198,13 @@ impl CourseProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::LessonProgress;
-    use education_platform_common::DateTime;
+    use crate::{CourseEnded, LessonProgress};
+    use education_platform_common::{DateTime, DomainEventDispatcher};
+    use std::sync::Arc;
+
+    fn create_test_dispatcher() -> Arc<DomainEventDispatcher<CourseEnded>> {
+        Arc::new(DomainEventDispatcher::new())
+    }
 
     fn create_test_lesson(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
@@ -214,6 +231,19 @@ mod tests {
             vec![lesson1, lesson2, lesson3],
             None,
             None,
+            create_test_dispatcher(),
+        )
+        .unwrap()
+    }
+
+    fn create_progress(lessons: Vec<LessonProgress>) -> CourseProgress {
+        CourseProgress::new(
+            "Course".to_string(),
+            "user@example.com".to_string(),
+            lessons,
+            None,
+            None,
+            create_test_dispatcher(),
         )
         .unwrap()
     }
@@ -225,14 +255,7 @@ mod tests {
         fn test_start_lesson_sets_start_date() {
             let lesson = create_test_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.start_lesson(lesson_id);
 
@@ -243,14 +266,7 @@ mod tests {
         fn test_start_lesson_updates_date() {
             let lesson = create_test_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.start_lesson(lesson_id);
 
@@ -271,14 +287,7 @@ mod tests {
         fn test_start_lesson_idempotent() {
             let lesson = create_test_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let started1 = progress.start_lesson(lesson_id);
             let started2 = started1.start_lesson(lesson_id);
@@ -293,14 +302,7 @@ mod tests {
         fn test_start_lesson_does_not_modify_original() {
             let lesson = create_test_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let _updated = progress.start_lesson(lesson_id);
 
@@ -315,14 +317,7 @@ mod tests {
         fn test_end_lesson_sets_end_date() {
             let lesson = create_started_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.end_lesson(lesson_id).unwrap();
 
@@ -333,14 +328,7 @@ mod tests {
         fn test_end_lesson_fails_if_not_started() {
             let lesson = create_test_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let result = progress.end_lesson(lesson_id);
 
@@ -351,14 +339,7 @@ mod tests {
         fn test_end_lesson_returns_unchanged_if_course_completed() {
             let lesson = create_completed_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.end_lesson(lesson_id).unwrap();
 
@@ -369,14 +350,7 @@ mod tests {
         fn test_end_lesson_updates_date() {
             let lesson = create_started_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.end_lesson(lesson_id).unwrap();
 
@@ -391,14 +365,7 @@ mod tests {
         fn test_restart_lesson_clears_dates() {
             let lesson = create_completed_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.restart_lesson(lesson_id);
 
@@ -410,14 +377,7 @@ mod tests {
         fn test_restart_lesson_not_started_returns_unchanged() {
             let lesson = create_test_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.restart_lesson(lesson_id);
 
@@ -428,14 +388,7 @@ mod tests {
         fn test_restart_lesson_updates_date() {
             let lesson = create_completed_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.restart_lesson(lesson_id);
 
@@ -450,14 +403,7 @@ mod tests {
         fn test_toggle_ends_started_lesson() {
             let lesson = create_started_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.toggle_lesson_completion(lesson_id).unwrap();
 
@@ -468,14 +414,7 @@ mod tests {
         fn test_toggle_restarts_completed_lesson() {
             let lesson = create_completed_lesson("Lesson", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.toggle_lesson_completion(lesson_id).unwrap();
 

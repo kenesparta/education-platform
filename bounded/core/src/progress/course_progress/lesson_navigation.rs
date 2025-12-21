@@ -11,19 +11,22 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
     /// let lesson2_id = lesson2.id();
     ///
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson1, lesson2],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// let updated = progress.select_lesson(lesson2_id).unwrap();
@@ -44,19 +47,22 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
     /// let lesson2_id = lesson2.id();
     ///
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson1, lesson2],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// let next = progress.select_next_lesson();
@@ -86,20 +92,23 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson1 = LessonProgress::new("Lesson 1".to_string(), 1800, None, None).unwrap();
     /// let lesson1_id = lesson1.id();
     /// let lesson2 = LessonProgress::new("Lesson 2".to_string(), 2400, None, None).unwrap();
     /// let lesson2_id = lesson2.id();
     ///
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson1, lesson2],
     ///     None,
     ///     Some(lesson2_id),
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// let prev = progress.select_previous_lesson();
@@ -135,17 +144,20 @@ impl CourseProgress {
     /// # Examples
     ///
     /// ```
-    /// use education_platform_core::{CourseProgress, LessonProgress};
-    /// use education_platform_common::Entity;
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::{DomainEventDispatcher, Entity};
+    /// use std::sync::Arc;
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let lesson_id = lesson.id();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
     /// let progress = CourseProgress::new(
     ///     "Course".to_string(),
     ///     "user@example.com".to_string(),
     ///     vec![lesson],
     ///     None,
     ///     None,
+    ///     dispatcher,
     /// ).unwrap();
     ///
     /// let found = progress.one_lesson_progress(lesson_id).unwrap();
@@ -166,7 +178,13 @@ impl CourseProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::LessonProgress;
+    use crate::{CourseEnded, LessonProgress};
+    use education_platform_common::DomainEventDispatcher;
+    use std::sync::Arc;
+
+    fn create_test_dispatcher() -> Arc<DomainEventDispatcher<CourseEnded>> {
+        Arc::new(DomainEventDispatcher::new())
+    }
 
     fn create_test_lesson(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
@@ -182,6 +200,19 @@ mod tests {
             vec![lesson1, lesson2, lesson3],
             None,
             None,
+            create_test_dispatcher(),
+        )
+        .unwrap()
+    }
+
+    fn create_progress(lessons: Vec<LessonProgress>) -> CourseProgress {
+        CourseProgress::new(
+            "Course".to_string(),
+            "user@example.com".to_string(),
+            lessons,
+            None,
+            None,
+            create_test_dispatcher(),
         )
         .unwrap()
     }
@@ -259,14 +290,7 @@ mod tests {
         fn test_select_next_lesson_single_lesson_stays() {
             let lesson = create_test_lesson("Only", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.select_next_lesson();
 
@@ -300,6 +324,7 @@ mod tests {
                 vec![lesson1, lesson2],
                 None,
                 Some(lesson2_id),
+                create_test_dispatcher(),
             )
             .unwrap();
 
@@ -322,14 +347,7 @@ mod tests {
         fn test_select_previous_lesson_single_lesson_stays() {
             let lesson = create_test_lesson("Only", 1800);
             let lesson_id = lesson.id();
-            let progress = CourseProgress::new(
-                "Course".to_string(),
-                "user@example.com".to_string(),
-                vec![lesson],
-                None,
-                None,
-            )
-            .unwrap();
+            let progress = create_progress(vec![lesson]);
 
             let updated = progress.select_previous_lesson();
 

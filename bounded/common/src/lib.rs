@@ -1,6 +1,7 @@
 mod date;
 mod datetime;
 mod document;
+mod domain_event;
 mod duration;
 mod email;
 mod entity;
@@ -16,6 +17,7 @@ mod validator;
 pub use date::*;
 pub use datetime::*;
 pub use document::*;
+pub use domain_event::*;
 pub use duration::*;
 pub use email::*;
 pub use entity::*;

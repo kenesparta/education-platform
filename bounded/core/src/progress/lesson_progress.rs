@@ -182,10 +182,7 @@ mod tests {
         fn test_new_rejects_zero_duration() {
             let result = LessonProgress::new("Valid Name".to_string(), 0, None, None);
 
-            assert!(matches!(
-                result,
-                Err(LessonProgressError::DurationCantBeZero)
-            ));
+            assert!(matches!(result, Err(LessonProgressError::DurationCantBeZero)));
         }
 
         #[test]
@@ -274,10 +271,7 @@ mod tests {
         fn test_cannot_end_unstarted_error_message() {
             let error = LessonProgressError::CannotEndUnstartedLesson;
 
-            assert_eq!(
-                error.to_string(),
-                "Cannot end a lesson that has not started"
-            );
+            assert_eq!(error.to_string(), "Cannot end a lesson that has not started");
         }
     }
 }

@@ -169,10 +169,7 @@ mod tests {
             let progress = create_test_progress("Not Started", 1800);
             let result = progress.end();
 
-            assert!(matches!(
-                result,
-                Err(LessonProgressError::CannotEndUnstartedLesson)
-            ));
+            assert!(matches!(result, Err(LessonProgressError::CannotEndUnstartedLesson)));
         }
 
         #[test]
