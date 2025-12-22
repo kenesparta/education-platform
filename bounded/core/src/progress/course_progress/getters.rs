@@ -1,4 +1,4 @@
-use super::{CourseProgress, Date, Email, LessonProgress, SimpleName};
+use super::{CourseProgress, Email, LessonProgress, SimpleName};
 use education_platform_common::DateTime;
 
 impl CourseProgress {
@@ -81,6 +81,37 @@ impl CourseProgress {
     #[must_use]
     pub const fn creation_date(&self) -> Option<DateTime> {
         self.creation_date
+    }
+
+    /// Returns the end date if the course has been completed.
+    ///
+    /// The end date is set when all lessons are completed, representing
+    /// the date when the last lesson was finished.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::{CourseEnded, CourseProgress, LessonProgress};
+    /// use education_platform_common::DomainEventDispatcher;
+    /// use std::sync::Arc;
+    ///
+    /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
+    /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
+    /// let progress = CourseProgress::builder()
+    ///     .course_name("My Course")
+    ///     .user_email("user@example.com")
+    ///     .lessons(vec![lesson])
+    ///     .event_dispatcher(dispatcher)
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// // Course isn't completed yet, so end_date is None
+    /// assert!(progress.end_date().is_none());
+    /// ```
+    #[inline]
+    #[must_use]
+    pub const fn end_date(&self) -> Option<DateTime> {
+        self.end_date
     }
 
     /// Returns a reference to all lesson progress records.
@@ -269,6 +300,148 @@ mod tests {
                 .unwrap();
 
             assert_eq!(progress.creation_date(), Some(date));
+        }
+    }
+
+    mod end_date {
+        use super::*;
+        use education_platform_common::DateTime;
+
+        fn create_completed_lesson_with_end(
+            name: &str,
+            duration: u64,
+            end: DateTime,
+        ) -> LessonProgress {
+            let start = DateTime::new(2024, 1, 1, 10, 0, 0).unwrap();
+            LessonProgress::new(name.to_string(), duration, Some(start), Some(end)).unwrap()
+        }
+
+        #[test]
+        fn test_end_date_returns_none_when_not_completed() {
+            let progress = create_test_progress();
+
+            assert!(progress.end_date().is_none());
+        }
+
+        #[test]
+        fn test_end_date_returns_none_when_lessons_not_started() {
+            let lesson = create_test_lesson("Not Started", 1800);
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson])
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert!(progress.end_date().is_none());
+        }
+
+        #[test]
+        fn test_end_date_returns_explicit_date_when_set() {
+            let lesson = create_test_lesson("Lesson", 1800);
+            let explicit_end = DateTime::new(2024, 6, 15, 14, 30, 0).unwrap();
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson])
+                .end_date(explicit_end)
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert_eq!(progress.end_date(), Some(explicit_end));
+        }
+
+        #[test]
+        fn test_end_date_calculated_when_all_lessons_completed() {
+            let end1 = DateTime::new(2024, 3, 10, 10, 0, 0).unwrap();
+            let end2 = DateTime::new(2024, 3, 15, 14, 30, 0).unwrap();
+
+            let lesson1 = create_completed_lesson_with_end("Lesson 1", 1800, end1);
+            let lesson2 = create_completed_lesson_with_end("Lesson 2", 2400, end2);
+
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson1, lesson2])
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert_eq!(progress.end_date(), Some(end2));
+        }
+
+        #[test]
+        fn test_end_date_returns_latest_lesson_end_date() {
+            let early = DateTime::new(2024, 1, 5, 9, 0, 0).unwrap();
+            let middle = DateTime::new(2024, 1, 10, 12, 0, 0).unwrap();
+            let late = DateTime::new(2024, 1, 20, 18, 0, 0).unwrap();
+
+            let lesson1 = create_completed_lesson_with_end("Early", 1800, early);
+            let lesson2 = create_completed_lesson_with_end("Late", 2400, late);
+            let lesson3 = create_completed_lesson_with_end("Middle", 3000, middle);
+
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson1, lesson2, lesson3])
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert_eq!(progress.end_date(), Some(late));
+        }
+
+        #[test]
+        fn test_end_date_single_completed_lesson() {
+            let end = DateTime::new(2024, 5, 20, 16, 45, 0).unwrap();
+            let lesson = create_completed_lesson_with_end("Only Lesson", 1800, end);
+
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson])
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert_eq!(progress.end_date(), Some(end));
+        }
+
+        #[test]
+        fn test_end_date_none_when_some_lessons_incomplete() {
+            let end = DateTime::new(2024, 3, 15, 14, 30, 0).unwrap();
+            let completed = create_completed_lesson_with_end("Completed", 1800, end);
+            let not_completed = create_test_lesson("Not Completed", 2400);
+
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![completed, not_completed])
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert!(progress.end_date().is_none());
+        }
+
+        #[test]
+        fn test_explicit_end_date_takes_priority_over_calculated() {
+            let lesson_end = DateTime::new(2024, 3, 15, 14, 30, 0).unwrap();
+            let explicit_end = DateTime::new(2024, 6, 1, 12, 0, 0).unwrap();
+            let lesson = create_completed_lesson_with_end("Completed", 1800, lesson_end);
+
+            let progress = CourseProgress::builder()
+                .course_name("Course")
+                .user_email("user@example.com")
+                .lessons(vec![lesson])
+                .end_date(explicit_end)
+                .event_dispatcher(create_test_dispatcher())
+                .build()
+                .unwrap();
+
+            assert_eq!(progress.end_date(), Some(explicit_end));
         }
     }
 

@@ -1,8 +1,8 @@
 use crate::{CourseProgress, CourseProgressError};
-use education_platform_common::{Date, DateTime, Entity, Id};
+use education_platform_common::{DateTime, Entity, Id};
 
 impl CourseProgress {
-    /// Starts a lesson by setting its start creation_date to today.
+    /// Starts a lesson by setting its start creation_date today.
     ///
     /// If the lesson is already started, it remains unchanged.
     /// If the lesson ID is not found, the progress is returned unchanged.
@@ -47,7 +47,7 @@ impl CourseProgress {
         new_self
     }
 
-    /// Ends a lesson by setting its end creation_date to today.
+    /// Ends a lesson by setting its end creation_date today.
     ///
     /// Returns an error if the lesson hasn't been started yet.
     /// If the course is already completed, returns unchanged.
@@ -155,7 +155,7 @@ impl CourseProgress {
     /// # Errors
     ///
     /// Returns `CourseProgressError::LessonNotFound` if the lesson ID doesn't exist.
-    /// Returns `CourseProgressError::LessonError` if ending fails (lesson not started).
+    /// Returns `CourseProgressError::LessonError` if ending fails (a lesson not started).
     ///
     /// # Examples
     ///

@@ -10,7 +10,7 @@ pub use events::CourseEnded;
 
 use crate::{LessonProgress, LessonProgressError};
 use education_platform_common::{
-    Date, DateTime, DomainEventDispatcher, Duration, Email, EmailError, Entity, Id, SimpleName,
+    DateTime, DomainEventDispatcher, Duration, Email, EmailError, Entity, Id, SimpleName,
     SimpleNameConfig, SimpleNameError,
 };
 use std::sync::Arc;
@@ -190,7 +190,7 @@ impl CourseProgressBuilder {
     pub fn build(self) -> Result<CourseProgress, CourseProgressError> {
         let course_name = self
             .course_name
-            .ok_or_else(|| SimpleNameError::EmptyValue)
+            .ok_or(SimpleNameError::EmptyValue)
             .and_then(|name| SimpleName::with_config(name, SimpleNameConfig::new(3, 50)))?;
 
         let user_email = self
