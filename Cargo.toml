@@ -12,5 +12,5 @@ members = [
     "cmd/api",
 
     # Frontend using Leptos
-    "cmd/site", "bounded/common",
+    "cmd/site", "bounded/common", "cmd/terminal",
 ]
