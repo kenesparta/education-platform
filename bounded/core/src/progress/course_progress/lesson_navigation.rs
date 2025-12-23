@@ -85,7 +85,7 @@ impl CourseProgress {
 
     /// Selects the previous lesson in the course.
     ///
-    /// If the current lesson is the first one, returns unchanged (stays on first lesson).
+    /// If the current lesson is the first one, returns unchanged (stays on the first lesson).
     ///
     /// # Examples
     ///

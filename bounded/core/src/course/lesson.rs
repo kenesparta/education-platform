@@ -1,3 +1,6 @@
+mod getters;
+mod with_methods;
+
 use education_platform_common::{
     Duration, Entity, Id, Index, IndexError, SimpleName, SimpleNameConfig, SimpleNameError, Url,
     UrlError,
@@ -24,7 +27,7 @@ pub enum LessonError {
 /// A lesson within a course, representing a single video or learning unit.
 ///
 /// `Lesson` is an entity that belongs to a `Course` aggregate. It contains
-/// information about a single lesson including its name, duration, video URL,
+/// information about a single lesson, including its name, duration, video URL,
 /// and position within the course.
 ///
 /// # Examples
@@ -88,6 +91,52 @@ impl Lesson {
         video_url: String,
         index: usize,
     ) -> Result<Self, LessonError> {
+        Self::with_id(Id::default(), name, duration_seconds, video_url, index)
+    }
+
+    /// Creates a `Lesson` with a specific ID (for reconstruction from persistence).
+    ///
+    /// Use this constructor when reconstructing a Lesson from storage where
+    /// the ID already exists. For creating new lessons, use [`Lesson::new`].
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The existing lesson ID
+    /// * `name` - The lesson name (will be validated as a SimpleName)
+    /// * `duration_seconds` - Duration of the lesson in seconds
+    /// * `video_url` - URL to the lesson video (must be valid HTTP/HTTPS)
+    /// * `index` - Position of this lesson within the course (zero-based)
+    ///
+    /// # Errors
+    ///
+    /// Returns `LessonError::NameError` if the name validation fails.
+    /// Returns `LessonError::VideoUrlError` if the URL validation fails.
+    /// Returns `LessonError::DurationIsZero` if duration is zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::Lesson;
+    /// use education_platform_common::{Entity, Id};
+    ///
+    /// let id = Id::default();
+    /// let lesson = Lesson::with_id(
+    ///     id,
+    ///     "Reconstructed Lesson".to_string(),
+    ///     1800,
+    ///     "https://example.com/videos/lesson.mp4".to_string(),
+    ///     0,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(lesson.id(), id);
+    /// ```
+    pub fn with_id(
+        id: Id,
+        name: String,
+        duration_seconds: u64,
+        video_url: String,
+        index: usize,
+    ) -> Result<Self, LessonError> {
         let duration = Duration::from_seconds(duration_seconds);
         if duration.is_zero() {
             return Err(LessonError::DurationIsZero);
@@ -96,7 +145,6 @@ impl Lesson {
         let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
         let video_url = Url::new(video_url)?;
         let index = Index::new(index);
-        let id = Id::default();
 
         Ok(Self {
             id,
@@ -105,240 +153,6 @@ impl Lesson {
             video_url,
             index,
         })
-    }
-
-    /// Returns the lesson name.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Rust Basics".to_string(),
-    ///     1200,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(lesson.name().as_str(), "Rust Basics");
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn name(&self) -> &SimpleName {
-        &self.name
-    }
-
-    /// Returns the lesson duration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     3665,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(lesson.duration().total_seconds(), 3665);
-    /// assert_eq!(lesson.duration().hours(), 1);
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn duration(&self) -> Duration {
-        self.duration
-    }
-
-    /// Returns the video URL.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(lesson.video_url().as_str(), "https://example.com/video.mp4");
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn video_url(&self) -> &Url {
-        &self.video_url
-    }
-
-    /// Returns the lesson index (position within the course).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     5,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(lesson.index().value(), 5);
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn index(&self) -> Index {
-        self.index
-    }
-
-    /// Sets the lesson index (position within the course).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    ///
-    /// let mut lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// lesson.update_index(5);
-    /// assert_eq!(lesson.index().value(), 5);
-    /// ```
-    #[inline]
-    pub fn update_index(&mut self, index: usize) {
-        self.index = Index::new(index);
-    }
-
-    /// Returns a new lesson with an updated name, preserving the original ID.
-    ///
-    /// # Errors
-    ///
-    /// Returns `LessonError::NameError` if the name validation fails.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    /// use education_platform_common::Entity;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Original Name".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// let original_id = lesson.id();
-    /// let updated = lesson.with_name("Updated Name".to_string()).unwrap();
-    ///
-    /// assert_eq!(updated.name().as_str(), "Updated Name");
-    /// assert_eq!(updated.id(), original_id);
-    /// ```
-    pub fn with_name(&self, name: String) -> Result<Self, LessonError> {
-        let name = SimpleName::with_config(name, SimpleNameConfig::new(3, 50))?;
-        Ok(Self { name, ..self.clone() })
-    }
-
-    /// Returns a new lesson with an updated duration, preserving the original ID.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    /// use education_platform_common::Entity;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// let original_id = lesson.id();
-    /// let updated = lesson.with_duration(3600);
-    ///
-    /// assert_eq!(updated.duration().total_seconds(), 3600);
-    /// assert_eq!(updated.id(), original_id);
-    /// ```
-    #[inline]
-    #[must_use]
-    pub fn with_duration(&self, duration_seconds: u64) -> Self {
-        Self {
-            duration: Duration::from_seconds(duration_seconds),
-            ..self.clone()
-        }
-    }
-
-    /// Returns a new lesson with an updated video URL, preserving the original ID.
-    ///
-    /// # Errors
-    ///
-    /// Returns `LessonError::VideoUrlError` if the URL validation fails.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    /// use education_platform_common::Entity;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// let original_id = lesson.id();
-    /// let updated = lesson.with_video_url("https://cdn.example.com/new-video.mp4".to_string()).unwrap();
-    ///
-    /// assert_eq!(updated.video_url().as_str(), "https://cdn.example.com/new-video.mp4");
-    /// assert_eq!(updated.id(), original_id);
-    /// ```
-    pub fn with_video_url(&self, video_url: String) -> Result<Self, LessonError> {
-        let video_url = Url::new(video_url)?;
-        Ok(Self {
-            video_url,
-            ..self.clone()
-        })
-    }
-
-    /// Returns a new lesson with an updated index, preserving the original ID.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    /// use education_platform_common::Entity;
-    ///
-    /// let lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// let original_id = lesson.id();
-    /// let updated = lesson.with_index(5);
-    ///
-    /// assert_eq!(updated.index().value(), 5);
-    /// assert_eq!(updated.id(), original_id);
-    /// ```
-    #[inline]
-    #[must_use]
-    pub fn with_index(&self, index: usize) -> Self {
-        Self {
-            index: Index::new(index),
-            ..self.clone()
-        }
     }
 }
 
@@ -491,82 +305,90 @@ mod tests {
             assert!(result.is_ok());
             assert_eq!(result.unwrap().name().as_str(), max_name);
         }
-    }
-
-    mod getters {
-        use super::*;
 
         #[test]
-        fn test_name_returns_simple_name() {
-            let lesson = Lesson::new(
-                "Test Lesson".to_string(),
-                1200,
-                "https://example.com/test.mp4".to_string(),
+        fn test_with_id_creates_lesson_with_provided_id() {
+            let id = Id::default();
+            let lesson = Lesson::with_id(
+                id,
+                "Reconstructed Lesson".to_string(),
+                1800,
+                "https://example.com/video.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            assert_eq!(lesson.name().as_str(), "Test Lesson");
+            assert_eq!(lesson.id(), id);
+            assert_eq!(lesson.name().as_str(), "Reconstructed Lesson");
+            assert_eq!(lesson.duration().total_seconds(), 1800);
         }
 
         #[test]
-        fn test_duration_returns_duration() {
-            let lesson = Lesson::new(
-                "Test Lesson".to_string(),
-                7265,
-                "https://example.com/test.mp4".to_string(),
+        fn test_with_id_preserves_exact_id() {
+            let id1 = Id::default();
+            let id2 = Id::default();
+
+            let lesson1 = Lesson::with_id(
+                id1,
+                "Lesson 1".to_string(),
+                600,
+                "https://example.com/l1.mp4".to_string(),
                 0,
             )
             .unwrap();
 
-            assert_eq!(lesson.duration().total_seconds(), 7265);
-            assert_eq!(lesson.duration().hours(), 2);
-            assert_eq!(lesson.duration().minutes(), 1);
-            assert_eq!(lesson.duration().seconds(), 5);
+            let lesson2 = Lesson::with_id(
+                id2,
+                "Lesson 2".to_string(),
+                600,
+                "https://example.com/l2.mp4".to_string(),
+                1,
+            )
+            .unwrap();
+
+            assert_eq!(lesson1.id(), id1);
+            assert_eq!(lesson2.id(), id2);
+            assert_ne!(lesson1.id(), lesson2.id());
         }
 
         #[test]
-        fn test_video_url_returns_url() {
-            let lesson = Lesson::new(
-                "Test Lesson".to_string(),
-                1200,
-                "https://cdn.example.com/videos/lesson.mp4".to_string(),
+        fn test_with_id_validates_name() {
+            let id = Id::default();
+            let result = Lesson::with_id(
+                id,
+                "AB".to_string(),
+                1800,
+                "https://example.com/video.mp4".to_string(),
                 0,
-            )
-            .unwrap();
-
-            assert_eq!(
-                lesson.video_url().as_str(),
-                "https://cdn.example.com/videos/lesson.mp4"
             );
-            assert!(lesson.video_url().is_secure());
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(LessonError::NameError(_))));
         }
 
         #[test]
-        fn test_index_returns_index() {
-            let lesson = Lesson::new(
-                "Test Lesson".to_string(),
-                1200,
-                "https://example.com/test.mp4".to_string(),
-                10,
-            )
-            .unwrap();
+        fn test_with_id_validates_url() {
+            let id = Id::default();
+            let result =
+                Lesson::with_id(id, "Valid Name".to_string(), 1800, "invalid-url".to_string(), 0);
 
-            assert_eq!(lesson.index().value(), 10);
-            assert!(!lesson.index().is_first());
+            assert!(result.is_err());
+            assert!(matches!(result, Err(LessonError::VideoUrlError(_))));
         }
 
         #[test]
-        fn test_index_first_lesson() {
-            let lesson = Lesson::new(
-                "First Lesson".to_string(),
-                1200,
-                "https://example.com/first.mp4".to_string(),
+        fn test_with_id_validates_duration() {
+            let id = Id::default();
+            let result = Lesson::with_id(
+                id,
+                "Valid Name".to_string(),
                 0,
-            )
-            .unwrap();
+                "https://example.com/video.mp4".to_string(),
+                0,
+            );
 
-            assert!(lesson.index().is_first());
+            assert!(result.is_err());
+            assert!(matches!(result, Err(LessonError::DurationIsZero)));
         }
     }
 
@@ -585,227 +407,6 @@ mod tests {
 
             let id = lesson.id();
             assert_eq!(id.as_bytes().len(), 16);
-        }
-    }
-
-    mod with_name {
-        use super::*;
-
-        #[test]
-        fn test_with_name_updates_name() {
-            let lesson = Lesson::new(
-                "Original".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson.with_name("Updated".to_string()).unwrap();
-
-            assert_eq!(updated.name().as_str(), "Updated");
-        }
-
-        #[test]
-        fn test_with_name_preserves_id() {
-            let lesson = Lesson::new(
-                "Original".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-            let original_id = lesson.id();
-
-            let updated = lesson.with_name("Updated".to_string()).unwrap();
-
-            assert_eq!(updated.id(), original_id);
-        }
-
-        #[test]
-        fn test_with_name_preserves_duration() {
-            let lesson = Lesson::new(
-                "Original".to_string(),
-                3600,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson.with_name("Updated".to_string()).unwrap();
-
-            assert_eq!(updated.duration().total_seconds(), 3600);
-        }
-
-        #[test]
-        fn test_with_name_invalid_returns_error() {
-            let lesson = Lesson::new(
-                "Original".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let result = lesson.with_name("AB".to_string());
-
-            assert!(result.is_err());
-            assert!(matches!(result, Err(LessonError::NameError(_))));
-        }
-    }
-
-    mod with_duration {
-        use super::*;
-
-        #[test]
-        fn test_with_duration_updates_duration() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson.with_duration(3600);
-
-            assert_eq!(updated.duration().total_seconds(), 3600);
-        }
-
-        #[test]
-        fn test_with_duration_preserves_id() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-            let original_id = lesson.id();
-
-            let updated = lesson.with_duration(3600);
-
-            assert_eq!(updated.id(), original_id);
-        }
-
-        #[test]
-        fn test_with_duration_preserves_name() {
-            let lesson = Lesson::new(
-                "My Lesson Name".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson.with_duration(3600);
-
-            assert_eq!(updated.name().as_str(), "My Lesson Name");
-        }
-    }
-
-    mod with_video_url {
-        use super::*;
-
-        #[test]
-        fn test_with_video_url_updates_url() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/old.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson
-                .with_video_url("https://example.com/new.mp4".to_string())
-                .unwrap();
-
-            assert_eq!(updated.video_url().as_str(), "https://example.com/new.mp4");
-        }
-
-        #[test]
-        fn test_with_video_url_preserves_id() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/old.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-            let original_id = lesson.id();
-
-            let updated = lesson
-                .with_video_url("https://example.com/new.mp4".to_string())
-                .unwrap();
-
-            assert_eq!(updated.id(), original_id);
-        }
-
-        #[test]
-        fn test_with_video_url_invalid_returns_error() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let result = lesson.with_video_url("not-a-url".to_string());
-
-            assert!(result.is_err());
-            assert!(matches!(result, Err(LessonError::VideoUrlError(_))));
-        }
-    }
-
-    mod with_index {
-        use super::*;
-
-        #[test]
-        fn test_with_index_updates_index() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson.with_index(5);
-
-            assert_eq!(updated.index().value(), 5);
-        }
-
-        #[test]
-        fn test_with_index_preserves_id() {
-            let lesson = Lesson::new(
-                "Lesson".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-            let original_id = lesson.id();
-
-            let updated = lesson.with_index(5);
-
-            assert_eq!(updated.id(), original_id);
-        }
-
-        #[test]
-        fn test_with_index_preserves_name() {
-            let lesson = Lesson::new(
-                "My Lesson".to_string(),
-                1800,
-                "https://example.com/video.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-
-            let updated = lesson.with_index(5);
-
-            assert_eq!(updated.name().as_str(), "My Lesson");
         }
     }
 

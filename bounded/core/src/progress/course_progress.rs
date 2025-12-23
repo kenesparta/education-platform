@@ -8,7 +8,7 @@ mod selected_lesson;
 
 pub use events::CourseEnded;
 
-use crate::{LessonProgress, LessonProgressError};
+use crate::{CourseError, LessonProgress, LessonProgressError};
 use education_platform_common::{
     DateTime, DomainEventDispatcher, Duration, Email, EmailError, Entity, Id, SimpleName,
     SimpleNameConfig, SimpleNameError,
@@ -20,6 +20,9 @@ use thiserror::Error;
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CourseProgressError {
+    #[error("Course validation failed: {0}")]
+    CourseError(#[from] CourseError),
+
     #[error("Course name validation failed: {0}")]
     NameError(#[from] SimpleNameError),
 

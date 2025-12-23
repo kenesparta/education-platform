@@ -21,7 +21,7 @@ pub enum LessonProgressError {
     CannotEndUnstartedLesson,
 }
 
-/// Tracks progress of a lesson within a course.
+/// Tracks the progress of a lesson within a course.
 ///
 /// `LessonProgress` is an entity that records whether a student has started
 /// and/or completed a specific lesson. It tracks the duration of the lesson
@@ -88,6 +88,43 @@ impl LessonProgress {
         start_date: Option<DateTime>,
         end_date: Option<DateTime>,
     ) -> Result<Self, LessonProgressError> {
+        Self::with_id(Id::default(), lesson_name, duration, start_date, end_date)
+    }
+
+    /// Creates a `LessonProgress` with a specific ID (for reconstruction from persistence).
+    ///
+    /// Use this constructor when reconstructing from storage where the ID already exists.
+    /// For creating new progress records, use [`LessonProgress::new`].
+    ///
+    /// # Errors
+    ///
+    /// Returns `LessonProgressError::NameError` if the lesson name fails validation.
+    /// Returns `LessonProgressError::DurationCantBeZero` if duration is zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use education_platform_core::LessonProgress;
+    /// use education_platform_common::{Entity, Id};
+    ///
+    /// let id = Id::default();
+    /// let progress = LessonProgress::with_id(
+    ///     id,
+    ///     "Reconstructed Lesson".to_string(),
+    ///     1800,
+    ///     None,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(progress.id(), id);
+    /// ```
+    pub fn with_id(
+        id: Id,
+        lesson_name: String,
+        duration: u64,
+        start_date: Option<DateTime>,
+        end_date: Option<DateTime>,
+    ) -> Result<Self, LessonProgressError> {
         let lesson_name = SimpleName::with_config(lesson_name, SimpleNameConfig::new(3, 50))?;
         let duration = Duration::from_seconds(duration);
         if duration.is_zero() {
@@ -95,7 +132,7 @@ impl LessonProgress {
         }
 
         Ok(Self {
-            id: Id::default(),
+            id,
             lesson_name,
             duration,
             start_date,
@@ -206,6 +243,47 @@ mod tests {
             let result = LessonProgress::new(name, 1, None, None);
 
             assert!(matches!(result, Err(LessonProgressError::NameError(_))));
+        }
+
+        #[test]
+        fn test_with_id_creates_progress_with_provided_id() {
+            let id = Id::default();
+            let progress =
+                LessonProgress::with_id(id, "Reconstructed".to_string(), 1800, None, None).unwrap();
+
+            assert_eq!(progress.id(), id);
+            assert_eq!(progress.lesson_name().as_str(), "Reconstructed");
+        }
+
+        #[test]
+        fn test_with_id_preserves_exact_id() {
+            let id1 = Id::default();
+            let id2 = Id::default();
+
+            let progress1 =
+                LessonProgress::with_id(id1, "First".to_string(), 600, None, None).unwrap();
+            let progress2 =
+                LessonProgress::with_id(id2, "Second".to_string(), 600, None, None).unwrap();
+
+            assert_eq!(progress1.id(), id1);
+            assert_eq!(progress2.id(), id2);
+            assert_ne!(progress1.id(), progress2.id());
+        }
+
+        #[test]
+        fn test_with_id_validates_name() {
+            let id = Id::default();
+            let result = LessonProgress::with_id(id, "AB".to_string(), 1800, None, None);
+
+            assert!(matches!(result, Err(LessonProgressError::NameError(_))));
+        }
+
+        #[test]
+        fn test_with_id_validates_duration() {
+            let id = Id::default();
+            let result = LessonProgress::with_id(id, "Valid Name".to_string(), 0, None, None);
+
+            assert!(matches!(result, Err(LessonProgressError::DurationCantBeZero)));
         }
     }
 
