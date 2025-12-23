@@ -90,28 +90,6 @@ impl Lesson {
     pub const fn index(&self) -> Index {
         self.index
     }
-
-    /// Sets the lesson index (position within the course).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use education_platform_core::Lesson;
-    ///
-    /// let mut lesson = Lesson::new(
-    ///     "Introduction".to_string(),
-    ///     1800,
-    ///     "https://example.com/video.mp4".to_string(),
-    ///     0,
-    /// ).unwrap();
-    ///
-    /// lesson.update_index(5);
-    /// assert_eq!(lesson.index().value(), 5);
-    /// ```
-    #[inline]
-    pub fn update_index(&mut self, index: usize) {
-        self.index = Index::new(index);
-    }
 }
 
 #[cfg(test)]
@@ -178,15 +156,6 @@ mod tests {
             let lesson = create_test_lesson("First Lesson", 1200, 0);
 
             assert!(lesson.index().is_first());
-        }
-
-        #[test]
-        fn test_update_index() {
-            let mut lesson = create_test_lesson("Lesson", 1800, 0);
-
-            lesson.update_index(5);
-
-            assert_eq!(lesson.index().value(), 5);
         }
     }
 }

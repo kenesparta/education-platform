@@ -91,9 +91,49 @@ impl PersonName {
 **Characteristics**:
 - Has a unique identifier (usually `Id` field)
 - Identity matters (two entities with same data but different IDs are different)
-- Can be mutable (but prefer immutable updates returning new instances)
+- **Use mutable methods (`&mut self`) for updates** - Rust's ownership system ensures safety
 - Equality based on `id`, not all fields
 - Examples: `User`, `Course`, `Order`, `Person`
+
+**CRITICAL: Entity Mutation Pattern**
+
+**ALWAYS use `&mut self` methods for entity modifications. NEVER use immutable `with_*` patterns that clone the entity.**
+
+Rust's ownership system already provides safety guarantees, making cloning unnecessary overhead:
+- `&mut self` ensures exclusive access (no concurrent modification bugs)
+- No unnecessary allocations from cloning
+- Clearer intent (mutation is explicit)
+- Matches Rust stdlib patterns (e.g., `Vec::push`)
+
+✅ **CORRECT: Mutable update methods**
+```rust
+impl Person {
+    /// Updates the person's email in place.
+    pub fn update_email(&mut self, email: Email) {
+        self.email = email;
+    }
+
+    /// Updates the person's name in place.
+    pub fn update_name(&mut self, name: PersonName) -> Result<(), PersonError> {
+        self.name = name;
+        Ok(())
+    }
+}
+
+// Usage
+let mut person = Person::new(name, email);
+person.update_email(new_email);
+```
+
+❌ **FORBIDDEN: Immutable with_* patterns (unnecessary cloning)**
+```rust
+// NEVER DO THIS for entities - creates unnecessary copies
+impl Person {
+    pub fn with_email(self, email: Email) -> Self {
+        Self { email, ..self }
+    }
+}
+```
 
 **Implementation Pattern**:
 ```rust
@@ -120,6 +160,11 @@ impl Person {
     pub const fn id(&self) -> Id {
         self.id
     }
+
+    /// Updates the person's email in place.
+    pub fn update_email(&mut self, email: Email) {
+        self.email = email;
+    }
 }
 
 // Equality based on ID only
@@ -131,6 +176,8 @@ impl PartialEq for Person {
 
 impl Eq for Person {}
 ```
+
+**Note**: Value Objects should remain immutable and use `with_*` patterns since they are small, copied by value, and have no identity.
 
 #### Aggregates
 **Definition**: A cluster of entities and value objects with a root entity.

@@ -8,7 +8,7 @@ impl LessonProgress {
     /// ```
     /// use education_platform_core::LessonProgress;
     ///
-    /// let progress = LessonProgress::new(
+    /// let mut progress = LessonProgress::new(
     ///     "Error Handling".to_string(),
     ///     2400,
     ///     None,
@@ -17,8 +17,8 @@ impl LessonProgress {
     ///
     /// assert!(!progress.has_started());
     ///
-    /// let started = progress.start();
-    /// assert!(started.has_started());
+    /// progress.start();
+    /// assert!(progress.has_started());
     /// ```
     #[inline]
     #[must_use]
@@ -55,7 +55,7 @@ impl LessonProgress {
     /// ```
     /// use education_platform_core::LessonProgress;
     ///
-    /// let progress = LessonProgress::new(
+    /// let mut progress = LessonProgress::new(
     ///     "Generics".to_string(),
     ///     2700,
     ///     None,
@@ -64,8 +64,8 @@ impl LessonProgress {
     ///
     /// assert!(!progress.is_in_progress());
     ///
-    /// let started = progress.start();
-    /// assert!(started.is_in_progress());
+    /// progress.start();
+    /// assert!(progress.is_in_progress());
     /// ```
     #[inline]
     #[must_use]
@@ -116,10 +116,10 @@ mod tests {
 
         #[test]
         fn test_has_started_returns_true_after_start() {
-            let progress = create_test_progress("Started", 1800);
-            let started = progress.start();
+            let mut progress = create_test_progress("Started", 1800);
+            progress.start();
 
-            assert!(started.has_started());
+            assert!(progress.has_started());
         }
 
         #[test]
@@ -138,19 +138,19 @@ mod tests {
 
         #[test]
         fn test_is_in_progress_true_when_started_not_ended() {
-            let progress = create_test_progress("In Progress", 1800);
-            let started = progress.start();
+            let mut progress = create_test_progress("In Progress", 1800);
+            progress.start();
 
-            assert!(started.is_in_progress());
+            assert!(progress.is_in_progress());
         }
 
         #[test]
         fn test_is_in_progress_false_when_completed() {
-            let progress = create_test_progress("Completed", 1800);
-            let started = progress.start();
-            let ended = started.end().unwrap();
+            let mut progress = create_test_progress("Completed", 1800);
+            progress.start();
+            progress.end().unwrap();
 
-            assert!(!ended.is_in_progress());
+            assert!(!progress.is_in_progress());
         }
 
         #[test]
@@ -162,19 +162,19 @@ mod tests {
 
         #[test]
         fn test_is_completed_false_when_only_started() {
-            let progress = create_test_progress("Started Only", 1800);
-            let started = progress.start();
+            let mut progress = create_test_progress("Started Only", 1800);
+            progress.start();
 
-            assert!(!started.is_completed());
+            assert!(!progress.is_completed());
         }
 
         #[test]
         fn test_is_completed_true_when_started_and_ended() {
-            let progress = create_test_progress("Completed", 1800);
-            let started = progress.start();
-            let ended = started.end().unwrap();
+            let mut progress = create_test_progress("Completed", 1800);
+            progress.start();
+            progress.end().unwrap();
 
-            assert!(ended.is_completed());
+            assert!(progress.is_completed());
         }
     }
 }

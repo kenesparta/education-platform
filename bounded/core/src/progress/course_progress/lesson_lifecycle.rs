@@ -36,11 +36,10 @@ impl CourseProgress {
             .iter_mut()
             .find(|lp| lp.id() == lesson_id)
         {
-            let started = lesson.start();
+            lesson.start();
             if new_self.selected_lesson.id() == lesson_id {
-                new_self.selected_lesson = started.clone();
+                new_self.selected_lesson = lesson.clone();
             }
-            *lesson = started;
         }
 
         new_self.creation_date = Some(DateTime::today());
@@ -90,11 +89,10 @@ impl CourseProgress {
             .iter_mut()
             .find(|lp| lp.id() == lesson_id)
         {
-            let ended = lesson.end()?;
+            lesson.end()?;
             if new_self.selected_lesson.id() == lesson_id {
-                new_self.selected_lesson = ended.clone();
+                new_self.selected_lesson = lesson.clone();
             }
-            *lesson = ended;
         }
 
         new_self.creation_date = Some(DateTime::today());
@@ -136,11 +134,10 @@ impl CourseProgress {
             .iter_mut()
             .find(|lp| lp.id() == lesson_id)
         {
-            let restarted = lesson.restart();
+            lesson.restart();
             if new_self.selected_lesson.id() == lesson_id {
-                new_self.selected_lesson = restarted.clone();
+                new_self.selected_lesson = lesson.clone();
             }
-            *lesson = restarted;
         }
 
         new_self.creation_date = Some(DateTime::today());

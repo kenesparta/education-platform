@@ -2,39 +2,37 @@ use super::{LessonProgress, LessonProgressError};
 use education_platform_common::DateTime;
 
 impl LessonProgress {
-    /// Starts the lesson by setting the start datetime today.
+    /// Starts the lesson by setting the start datetime to today.
     ///
-    /// If the lesson is already started, returns a clone with the same start datetime.
+    /// If the lesson is already started, this is a no-op.
     ///
     /// # Examples
     ///
     /// ```
     /// use education_platform_core::LessonProgress;
     ///
-    /// let progress = LessonProgress::new(
+    /// let mut progress = LessonProgress::new(
     ///     "Closures".to_string(),
     ///     1800,
     ///     None,
     ///     None,
     /// ).unwrap();
     ///
-    /// let started = progress.start();
-    /// assert!(started.has_started());
-    /// assert!(started.start_date().is_some());
+    /// progress.start();
+    /// assert!(progress.has_started());
+    /// assert!(progress.start_date().is_some());
     /// ```
-    #[must_use]
-    pub fn start(&self) -> Self {
+    pub fn start(&mut self) {
         if self.has_started() {
-            return self.clone();
+            return;
         }
 
-        Self {
-            start_date: Some(DateTime::today()),
-            ..self.clone()
-        }
+        self.start_date = Some(DateTime::today());
     }
 
-    /// Ends the lesson by setting the end datetime today.
+    /// Ends the lesson by setting the end datetime to today.
+    ///
+    /// If the lesson is already ended, this is a no-op.
     ///
     /// # Errors
     ///
@@ -46,7 +44,7 @@ impl LessonProgress {
     /// ```
     /// use education_platform_core::LessonProgress;
     ///
-    /// let progress = LessonProgress::new(
+    /// let mut progress = LessonProgress::new(
     ///     "Iterators".to_string(),
     ///     2100,
     ///     None,
@@ -58,65 +56,60 @@ impl LessonProgress {
     /// assert!(result.is_err());
     ///
     /// // Start first, then end
-    /// let started = progress.start();
-    /// let ended = started.end().unwrap();
-    /// assert!(ended.has_ended());
+    /// progress.start();
+    /// progress.end().unwrap();
+    /// assert!(progress.has_ended());
     /// ```
-    pub fn end(&self) -> Result<Self, LessonProgressError> {
+    pub fn end(&mut self) -> Result<(), LessonProgressError> {
         if !self.has_started() {
             return Err(LessonProgressError::CannotEndUnstartedLesson);
         }
 
         if self.has_ended() {
-            return Ok(self.clone());
+            return Ok(());
         }
 
-        Ok(Self {
-            end_date: Some(DateTime::today()),
-            ..self.clone()
-        })
+        self.end_date = Some(DateTime::today());
+        Ok(())
     }
 
     /// Restarts the lesson by clearing both start and end dates.
     ///
-    /// If the lesson has not been started, returns a clone unchanged.
+    /// If the lesson has not been started, this is a no-op.
     ///
     /// # Examples
     ///
     /// ```
     /// use education_platform_core::LessonProgress;
     ///
-    /// let progress = LessonProgress::new(
+    /// let mut progress = LessonProgress::new(
     ///     "Smart Pointers".to_string(),
     ///     2400,
     ///     None,
     ///     None,
     /// ).unwrap();
     ///
-    /// let started = progress.start();
-    /// assert!(started.has_started());
+    /// progress.start();
+    /// assert!(progress.has_started());
     ///
-    /// let restarted = started.restart();
-    /// assert!(!restarted.has_started());
-    /// assert!(!restarted.has_ended());
+    /// progress.restart();
+    /// assert!(!progress.has_started());
+    /// assert!(!progress.has_ended());
     /// ```
-    #[must_use]
-    pub fn restart(&self) -> Self {
+    pub fn restart(&mut self) {
         if !self.has_started() {
-            return self.clone();
+            return;
         }
 
-        Self {
-            start_date: None,
-            end_date: None,
-            ..self.clone()
-        }
+        self.start_date = None;
+        self.end_date = None;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use education_platform_common::Entity;
 
     fn create_test_progress(name: &str, duration: u64) -> LessonProgress {
         LessonProgress::new(name.to_string(), duration, None, None).unwrap()
@@ -127,37 +120,39 @@ mod tests {
 
         #[test]
         fn test_start_sets_start_date() {
-            let progress = create_test_progress("Start Test", 1800);
-            let started = progress.start();
+            let mut progress = create_test_progress("Start Test", 1800);
+            progress.start();
 
-            assert!(started.start_date().is_some());
-            assert!(started.has_started());
+            assert!(progress.start_date().is_some());
+            assert!(progress.has_started());
         }
 
         #[test]
         fn test_start_preserves_other_fields() {
-            let progress = create_test_progress("Preserved", 3600);
-            let started = progress.start();
+            let mut progress = create_test_progress("Preserved", 3600);
+            progress.start();
 
-            assert_eq!(started.lesson_name().as_str(), "Preserved");
-            assert_eq!(started.duration().total_seconds(), 3600);
+            assert_eq!(progress.lesson_name().as_str(), "Preserved");
+            assert_eq!(progress.duration().total_seconds(), 3600);
         }
 
         #[test]
         fn test_start_is_idempotent() {
-            let progress = create_test_progress("Idempotent", 1800);
-            let started1 = progress.start();
-            let started2 = started1.start();
+            let mut progress = create_test_progress("Idempotent", 1800);
+            progress.start();
+            let first_start_date = progress.start_date().cloned();
+            progress.start();
 
-            assert_eq!(started1.start_date(), started2.start_date());
+            assert_eq!(progress.start_date(), first_start_date.as_ref());
         }
 
         #[test]
-        fn test_start_does_not_modify_original() {
-            let progress = create_test_progress("Original", 1800);
-            let _started = progress.start();
+        fn test_start_preserves_id() {
+            let mut progress = create_test_progress("ID Test", 1800);
+            let original_id = progress.id();
+            progress.start();
 
-            assert!(!progress.has_started());
+            assert_eq!(progress.id(), original_id);
         }
     }
 
@@ -166,7 +161,7 @@ mod tests {
 
         #[test]
         fn test_end_fails_when_not_started() {
-            let progress = create_test_progress("Not Started", 1800);
+            let mut progress = create_test_progress("Not Started", 1800);
             let result = progress.end();
 
             assert!(matches!(result, Err(LessonProgressError::CannotEndUnstartedLesson)));
@@ -174,50 +169,52 @@ mod tests {
 
         #[test]
         fn test_end_succeeds_when_started() {
-            let progress = create_test_progress("Started", 1800);
-            let started = progress.start();
-            let ended = started.end();
+            let mut progress = create_test_progress("Started", 1800);
+            progress.start();
+            let result = progress.end();
 
-            assert!(ended.is_ok());
-            assert!(ended.unwrap().has_ended());
+            assert!(result.is_ok());
+            assert!(progress.has_ended());
         }
 
         #[test]
         fn test_end_sets_end_date() {
-            let progress = create_test_progress("End Test", 1800);
-            let started = progress.start();
-            let ended = started.end().unwrap();
+            let mut progress = create_test_progress("End Test", 1800);
+            progress.start();
+            progress.end().unwrap();
 
-            assert!(ended.end_date().is_some());
+            assert!(progress.end_date().is_some());
         }
 
         #[test]
         fn test_end_preserves_start_date() {
-            let progress = create_test_progress("Preserve Start", 1800);
-            let started = progress.start();
-            let start_date = started.start_date();
-            let ended = started.end().unwrap();
+            let mut progress = create_test_progress("Preserve Start", 1800);
+            progress.start();
+            let start_date = progress.start_date().cloned();
+            progress.end().unwrap();
 
-            assert_eq!(ended.start_date(), start_date);
+            assert_eq!(progress.start_date(), start_date.as_ref());
         }
 
         #[test]
         fn test_end_is_idempotent() {
-            let progress = create_test_progress("Idempotent End", 1800);
-            let started = progress.start();
-            let ended1 = started.end().unwrap();
-            let ended2 = ended1.end().unwrap();
+            let mut progress = create_test_progress("Idempotent End", 1800);
+            progress.start();
+            progress.end().unwrap();
+            let first_end_date = progress.end_date().cloned();
+            progress.end().unwrap();
 
-            assert_eq!(ended1.end_date(), ended2.end_date());
+            assert_eq!(progress.end_date(), first_end_date.as_ref());
         }
 
         #[test]
-        fn test_end_does_not_modify_original() {
-            let progress = create_test_progress("Original", 1800);
-            let started = progress.start();
-            let _ended = started.end().unwrap();
+        fn test_end_preserves_id() {
+            let mut progress = create_test_progress("ID Test", 1800);
+            let original_id = progress.id();
+            progress.start();
+            progress.end().unwrap();
 
-            assert!(!started.has_ended());
+            assert_eq!(progress.id(), original_id);
         }
     }
 
@@ -226,51 +223,52 @@ mod tests {
 
         #[test]
         fn test_restart_clears_start_date() {
-            let progress = create_test_progress("Restart", 1800);
-            let started = progress.start();
-            let restarted = started.restart();
+            let mut progress = create_test_progress("Restart", 1800);
+            progress.start();
+            progress.restart();
 
-            assert!(!restarted.has_started());
-            assert!(restarted.start_date().is_none());
+            assert!(!progress.has_started());
+            assert!(progress.start_date().is_none());
         }
 
         #[test]
         fn test_restart_clears_end_date() {
-            let progress = create_test_progress("Restart End", 1800);
-            let started = progress.start();
-            let ended = started.end().unwrap();
-            let restarted = ended.restart();
+            let mut progress = create_test_progress("Restart End", 1800);
+            progress.start();
+            progress.end().unwrap();
+            progress.restart();
 
-            assert!(!restarted.has_ended());
-            assert!(restarted.end_date().is_none());
+            assert!(!progress.has_ended());
+            assert!(progress.end_date().is_none());
         }
 
         #[test]
         fn test_restart_preserves_other_fields() {
-            let progress = create_test_progress("Preserved Fields", 3600);
-            let started = progress.start();
-            let restarted = started.restart();
+            let mut progress = create_test_progress("Preserved Fields", 3600);
+            progress.start();
+            progress.restart();
 
-            assert_eq!(restarted.lesson_name().as_str(), "Preserved Fields");
-            assert_eq!(restarted.duration().total_seconds(), 3600);
+            assert_eq!(progress.lesson_name().as_str(), "Preserved Fields");
+            assert_eq!(progress.duration().total_seconds(), 3600);
         }
 
         #[test]
         fn test_restart_is_noop_when_not_started() {
-            let progress = create_test_progress("Not Started", 1800);
-            let restarted = progress.restart();
+            let mut progress = create_test_progress("Not Started", 1800);
+            progress.restart();
 
-            assert!(!restarted.has_started());
-            assert!(!restarted.has_ended());
+            assert!(!progress.has_started());
+            assert!(!progress.has_ended());
         }
 
         #[test]
-        fn test_restart_does_not_modify_original() {
-            let progress = create_test_progress("Original", 1800);
-            let started = progress.start();
-            let _restarted = started.restart();
+        fn test_restart_preserves_id() {
+            let mut progress = create_test_progress("ID Test", 1800);
+            let original_id = progress.id();
+            progress.start();
+            progress.restart();
 
-            assert!(started.has_started());
+            assert_eq!(progress.id(), original_id);
         }
     }
 }

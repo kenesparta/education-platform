@@ -632,6 +632,7 @@ mod tests {
         }
 
         #[test]
+        #[allow(clippy::clone_on_copy)]
         fn test_clone_creates_equal_instance() {
             let a = Index::new(5);
             let b = a.clone();

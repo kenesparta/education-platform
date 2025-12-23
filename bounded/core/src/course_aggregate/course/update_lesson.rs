@@ -43,8 +43,8 @@ impl Course {
     ///     vec![chapter],
     /// ).unwrap();
     ///
-    /// let original_lesson = &course.chapters()[0].lessons()[0];
-    /// let updated_lesson = original_lesson.with_name("Introduction Updated".to_string()).unwrap();
+    /// let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+    /// updated_lesson.update_name("Introduction Updated".to_string()).unwrap();
     ///
     /// let updated_course = course.update_lesson(updated_lesson).unwrap();
     /// assert_eq!(updated_course.chapters()[0].lessons()[0].name().as_str(), "Introduction Updated");
@@ -120,9 +120,9 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson
-                .with_name("Updated Name".to_string())
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson
+                .update_name("Updated Name".to_string())
                 .unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
@@ -139,8 +139,8 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_duration(3600);
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_duration(3600);
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -161,8 +161,8 @@ mod tests {
 
             assert_eq!(course.duration().total_seconds(), 3000);
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_duration(3600);
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_duration(3600);
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -178,9 +178,9 @@ mod tests {
             let course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();
 
-            let original_lesson = &course.chapters()[1].lessons()[0];
-            let updated_lesson = original_lesson
-                .with_name("Updated Lesson 2".to_string())
+            let mut updated_lesson = course.chapters()[1].lessons()[0].clone();
+            updated_lesson
+                .update_name("Updated Lesson 2".to_string())
                 .unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
@@ -198,8 +198,8 @@ mod tests {
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
             let original_id = course.id();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_name("Updated".to_string()).unwrap();
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_name("Updated".to_string()).unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -212,8 +212,8 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
             let course = Course::new("My Course Name".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_name("Updated".to_string()).unwrap();
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_name("Updated".to_string()).unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -228,9 +228,9 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson1, lesson2, lesson3]);
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[1];
-            let updated_lesson = original_lesson
-                .with_name("Updated Lesson 2".to_string())
+            let mut updated_lesson = course.chapters()[0].lessons()[1].clone();
+            updated_lesson
+                .update_name("Updated Lesson 2".to_string())
                 .unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
@@ -249,9 +249,9 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let original_lesson_id = original_lesson.id();
-            let updated_lesson = original_lesson.with_name("Updated".to_string()).unwrap();
+            let original_lesson_id = course.chapters()[0].lessons()[0].id();
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_name("Updated".to_string()).unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -278,8 +278,8 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_name("Updated".to_string()).unwrap();
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_name("Updated".to_string()).unwrap();
 
             let _ = course.update_lesson(updated_lesson).unwrap();
 
@@ -295,8 +295,8 @@ mod tests {
             let course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_name("Updated".to_string()).unwrap();
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_name("Updated".to_string()).unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -312,8 +312,8 @@ mod tests {
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson1, lesson2]);
             let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
-            let original_lesson = &course.chapters()[0].lessons()[0];
-            let updated_lesson = original_lesson.with_name("Updated".to_string()).unwrap();
+            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
+            updated_lesson.update_name("Updated".to_string()).unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();
 
@@ -335,9 +335,9 @@ mod tests {
             let course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();
 
-            let original_lesson = &course.chapters()[1].lessons()[1];
-            let updated_lesson = original_lesson
-                .with_name("Updated Lesson 4".to_string())
+            let mut updated_lesson = course.chapters()[1].lessons()[1].clone();
+            updated_lesson
+                .update_name("Updated Lesson 4".to_string())
                 .unwrap();
 
             let updated_course = course.update_lesson(updated_lesson).unwrap();

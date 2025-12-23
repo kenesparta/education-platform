@@ -981,6 +981,7 @@ mod tests {
         }
 
         #[test]
+        #[allow(clippy::clone_on_copy)]
         fn test_clone_creates_equal_instance() {
             let d1 = Date::new(2024, 6, 15).unwrap();
             let d2 = d1.clone();

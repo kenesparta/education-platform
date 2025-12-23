@@ -215,11 +215,11 @@ impl CreateCourseProgress {
             .event_dispatcher(Arc::clone(&self.event_dispatcher));
 
         if let Some(creation_date) = current_progress.creation_date() {
-            builder = builder.creation_date(creation_date.clone());
+            builder = builder.creation_date(creation_date);
         }
 
         if let Some(end_date) = current_progress.end_date() {
-            builder = builder.end_date(end_date.clone());
+            builder = builder.end_date(end_date);
         }
 
         if let Some(id) = selected_lesson_id {

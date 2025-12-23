@@ -53,7 +53,7 @@ impl LessonProgress {
     /// ```
     /// use education_platform_core::LessonProgress;
     ///
-    /// let progress = LessonProgress::new(
+    /// let mut progress = LessonProgress::new(
     ///     "Structs".to_string(),
     ///     1800,
     ///     None,
@@ -62,8 +62,8 @@ impl LessonProgress {
     ///
     /// assert!(progress.start_date().is_none());
     ///
-    /// let started = progress.start();
-    /// assert!(started.start_date().is_some());
+    /// progress.start();
+    /// assert!(progress.start_date().is_some());
     /// ```
     #[inline]
     #[must_use]

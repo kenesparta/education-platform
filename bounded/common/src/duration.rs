@@ -560,6 +560,7 @@ mod tests {
         }
 
         #[test]
+        #[allow(clippy::clone_on_copy)]
         fn test_clone_creates_equal_instance() {
             let d1 = Duration::from_seconds(120);
             let d2 = d1.clone();

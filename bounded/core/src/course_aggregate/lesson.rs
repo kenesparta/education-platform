@@ -1,5 +1,5 @@
 mod getters;
-mod with_methods;
+mod update;
 
 use education_platform_common::{
     Duration, Entity, Id, Index, IndexError, SimpleName, SimpleNameConfig, SimpleNameError, Url,

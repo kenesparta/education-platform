@@ -32,7 +32,7 @@ pub enum LessonProgressError {
 /// ```
 /// use education_platform_core::LessonProgress;
 ///
-/// let progress = LessonProgress::new(
+/// let mut progress = LessonProgress::new(
 ///     "Introduction to Rust".to_string(),
 ///     1800,
 ///     None,
@@ -42,8 +42,8 @@ pub enum LessonProgressError {
 /// assert!(!progress.has_started());
 /// assert!(!progress.has_ended());
 ///
-/// let started = progress.start();
-/// assert!(started.has_started());
+/// progress.start();
+/// assert!(progress.has_started());
 /// ```
 #[derive(Debug, Clone)]
 pub struct LessonProgress {
@@ -327,11 +327,12 @@ mod tests {
         }
 
         #[test]
-        fn test_started_version_equals_original() {
-            let progress = create_test_progress("Started", 1800);
-            let started = progress.start();
+        fn test_started_version_has_same_id() {
+            let mut progress = create_test_progress("Started", 1800);
+            let original_id = progress.id();
+            progress.start();
 
-            assert_eq!(progress, started);
+            assert_eq!(progress.id(), original_id);
         }
     }
 
