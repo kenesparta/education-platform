@@ -2,7 +2,7 @@ use super::{Chapter, ChapterError, Lesson};
 use education_platform_common::Entity;
 
 impl Chapter {
-    /// Removes a lesson from this chapter and returns a new `Chapter` instance.
+    /// Removes a lesson from this chapter by its identity.
     ///
     /// The lesson is identified by its ID. After removal, all remaining lessons
     /// are reindexed sequentially starting from 0.
@@ -31,17 +31,17 @@ impl Chapter {
     ///     1,
     /// ).unwrap();
     ///
-    /// let chapter = Chapter::new(
+    /// let mut chapter = Chapter::new(
     ///     "My Chapter".to_string(),
     ///     0,
     ///     vec![lesson1.clone(), lesson2],
     /// ).unwrap();
     ///
-    /// let updated = chapter.delete_lesson(&lesson1).unwrap();
-    /// assert_eq!(updated.lessons().len(), 1);
-    /// assert_eq!(updated.lessons()[0].name().as_str(), "Second");
+    /// chapter.delete_lesson(&lesson1).unwrap();
+    /// assert_eq!(chapter.lessons().len(), 1);
+    /// assert_eq!(chapter.lessons()[0].name().as_str(), "Second");
     /// ```
-    pub fn delete_lesson(&self, lesson: &Lesson) -> Result<Self, ChapterError> {
+    pub fn delete_lesson(&mut self, lesson: &Lesson) -> Result<(), ChapterError> {
         let lessons: Vec<Lesson> = self
             .lessons
             .iter()
@@ -49,12 +49,9 @@ impl Chapter {
             .cloned()
             .collect();
 
-        let lessons = Self::reassign_index_lessons(&lessons)?;
+        self.lessons = Self::reassign_index_lessons(&lessons)?;
 
-        Ok(Self {
-            lessons,
-            ..self.clone()
-        })
+        Ok(())
     }
 }
 
@@ -78,13 +75,13 @@ mod tests {
             create_test_lesson("First", 0),
             create_test_lesson("Second", 1),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
-        let lesson_to_remove = &chapter.lessons()[0].clone();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let lesson_to_remove = chapter.lessons()[0].clone();
 
-        let updated = chapter.delete_lesson(lesson_to_remove).unwrap();
+        chapter.delete_lesson(&lesson_to_remove).unwrap();
 
-        assert_eq!(updated.lessons().len(), 1);
-        assert_eq!(updated.lessons()[0].name().as_str(), "Second");
+        assert_eq!(chapter.lessons().len(), 1);
+        assert_eq!(chapter.lessons()[0].name().as_str(), "Second");
     }
 
     #[test]
@@ -94,14 +91,14 @@ mod tests {
             create_test_lesson("Second", 1),
             create_test_lesson("Third", 2),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
-        let first = &chapter.lessons()[0].clone();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let first = chapter.lessons()[0].clone();
 
-        let updated = chapter.delete_lesson(first).unwrap();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.lessons().len(), 2);
-        assert_eq!(updated.lessons()[0].name().as_str(), "Second");
-        assert_eq!(updated.lessons()[1].name().as_str(), "Third");
+        assert_eq!(chapter.lessons().len(), 2);
+        assert_eq!(chapter.lessons()[0].name().as_str(), "Second");
+        assert_eq!(chapter.lessons()[1].name().as_str(), "Third");
     }
 
     #[test]
@@ -111,14 +108,14 @@ mod tests {
             create_test_lesson("Second", 1),
             create_test_lesson("Third", 2),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
-        let last = &chapter.lessons()[2].clone();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let last = chapter.lessons()[2].clone();
 
-        let updated = chapter.delete_lesson(last).unwrap();
+        chapter.delete_lesson(&last).unwrap();
 
-        assert_eq!(updated.lessons().len(), 2);
-        assert_eq!(updated.lessons()[0].name().as_str(), "First");
-        assert_eq!(updated.lessons()[1].name().as_str(), "Second");
+        assert_eq!(chapter.lessons().len(), 2);
+        assert_eq!(chapter.lessons()[0].name().as_str(), "First");
+        assert_eq!(chapter.lessons()[1].name().as_str(), "Second");
     }
 
     #[test]
@@ -128,22 +125,22 @@ mod tests {
             create_test_lesson("Second", 1),
             create_test_lesson("Third", 2),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
-        let middle = &chapter.lessons()[1].clone();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let middle = chapter.lessons()[1].clone();
 
-        let updated = chapter.delete_lesson(middle).unwrap();
+        chapter.delete_lesson(&middle).unwrap();
 
-        assert_eq!(updated.lessons()[0].index().value(), 0);
-        assert_eq!(updated.lessons()[1].index().value(), 1);
+        assert_eq!(chapter.lessons()[0].index().value(), 0);
+        assert_eq!(chapter.lessons()[1].index().value(), 1);
     }
 
     #[test]
     fn test_remove_lesson_returns_error_when_last_lesson() {
         let lesson = create_test_lesson("Only", 0);
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
-        let only = &chapter.lessons()[0].clone();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson]).unwrap();
+        let only = chapter.lessons()[0].clone();
 
-        let result = chapter.delete_lesson(only);
+        let result = chapter.delete_lesson(&only);
 
         assert!(result.is_err());
         assert!(matches!(result, Err(ChapterError::ChapterWithEmptyLessons)));
@@ -155,12 +152,12 @@ mod tests {
             create_test_lesson("First", 0),
             create_test_lesson("Second", 1),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
         let nonexistent = create_test_lesson("Nonexistent", 99);
 
-        let updated = chapter.delete_lesson(&nonexistent).unwrap();
+        chapter.delete_lesson(&nonexistent).unwrap();
 
-        assert_eq!(updated.lessons().len(), 2);
+        assert_eq!(chapter.lessons().len(), 2);
     }
 
     #[test]
@@ -169,13 +166,13 @@ mod tests {
             create_test_lesson("First", 0),
             create_test_lesson("Second", 1),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
         let original_id = chapter.id();
-        let first = &chapter.lessons()[0].clone();
+        let first = chapter.lessons()[0].clone();
 
-        let updated = chapter.delete_lesson(first).unwrap();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.id(), original_id);
+        assert_eq!(chapter.id(), original_id);
     }
 
     #[test]
@@ -184,12 +181,12 @@ mod tests {
             create_test_lesson("First", 0),
             create_test_lesson("Second", 1),
         ];
-        let chapter = Chapter::new("My Chapter".to_string(), 0, lessons).unwrap();
-        let first = &chapter.lessons()[0].clone();
+        let mut chapter = Chapter::new("My Chapter".to_string(), 0, lessons).unwrap();
+        let first = chapter.lessons()[0].clone();
 
-        let updated = chapter.delete_lesson(first).unwrap();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.name().as_str(), "My Chapter");
+        assert_eq!(chapter.name().as_str(), "My Chapter");
     }
 
     #[test]
@@ -198,26 +195,12 @@ mod tests {
             create_test_lesson("First", 0),
             create_test_lesson("Second", 1),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 5, lessons).unwrap();
-        let first = &chapter.lessons()[0].clone();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 5, lessons).unwrap();
+        let first = chapter.lessons()[0].clone();
 
-        let updated = chapter.delete_lesson(first).unwrap();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.index().value(), 5);
-    }
-
-    #[test]
-    fn test_remove_lesson_does_not_modify_original() {
-        let lessons = vec![
-            create_test_lesson("First", 0),
-            create_test_lesson("Second", 1),
-        ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
-        let first = &chapter.lessons()[0].clone();
-
-        let _ = chapter.delete_lesson(first).unwrap();
-
-        assert_eq!(chapter.lessons().len(), 2);
+        assert_eq!(chapter.index().value(), 5);
     }
 
     #[test]
@@ -227,15 +210,15 @@ mod tests {
             create_test_lesson("Second", 1),
             create_test_lesson("Third", 2),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
         let original_second_id = chapter.lessons()[1].id();
         let original_third_id = chapter.lessons()[2].id();
-        let first = &chapter.lessons()[0].clone();
+        let first = chapter.lessons()[0].clone();
 
-        let updated = chapter.delete_lesson(first).unwrap();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.lessons()[0].id(), original_second_id);
-        assert_eq!(updated.lessons()[1].id(), original_third_id);
+        assert_eq!(chapter.lessons()[0].id(), original_second_id);
+        assert_eq!(chapter.lessons()[1].id(), original_third_id);
     }
 
     #[test]
@@ -245,13 +228,13 @@ mod tests {
             create_test_lesson("Second", 1),
             create_test_lesson("Third", 2),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
 
-        let first = &chapter.lessons()[0].clone();
-        let chapter = chapter.delete_lesson(first).unwrap();
+        let first = chapter.lessons()[0].clone();
+        chapter.delete_lesson(&first).unwrap();
 
-        let first = &chapter.lessons()[0].clone();
-        let chapter = chapter.delete_lesson(first).unwrap();
+        let first = chapter.lessons()[0].clone();
+        chapter.delete_lesson(&first).unwrap();
 
         assert_eq!(chapter.lessons().len(), 1);
         assert_eq!(chapter.lessons()[0].name().as_str(), "Third");
@@ -265,12 +248,13 @@ mod tests {
         let lesson2 =
             Lesson::new("Second".to_string(), 1200, "https://example.com/2.mp4".to_string(), 1)
                 .unwrap();
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, vec![lesson1, lesson2]).unwrap();
+        let mut chapter =
+            Chapter::new("Test Chapter".to_string(), 0, vec![lesson1, lesson2]).unwrap();
 
-        let first = &chapter.lessons()[0].clone();
-        let updated = chapter.delete_lesson(first).unwrap();
+        let first = chapter.lessons()[0].clone();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.total_duration().total_seconds(), 1200);
+        assert_eq!(chapter.total_duration().total_seconds(), 1200);
     }
 
     #[test]
@@ -279,11 +263,11 @@ mod tests {
             create_test_lesson("First", 0),
             create_test_lesson("Second", 1),
         ];
-        let chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
+        let mut chapter = Chapter::new("Test Chapter".to_string(), 0, lessons).unwrap();
 
-        let first = &chapter.lessons()[0].clone();
-        let updated = chapter.delete_lesson(first).unwrap();
+        let first = chapter.lessons()[0].clone();
+        chapter.delete_lesson(&first).unwrap();
 
-        assert_eq!(updated.lesson_quantity(), 1);
+        assert_eq!(chapter.lesson_quantity(), 1);
     }
 }

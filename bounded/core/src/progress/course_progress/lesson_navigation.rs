@@ -20,7 +20,7 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::builder()
+    /// let mut progress = CourseProgress::builder()
     ///     .course_name("Course")
     ///     .user_email("user@example.com")
     ///     .lessons(vec![lesson1, lesson2])
@@ -28,20 +28,17 @@ impl CourseProgress {
     ///     .build()
     ///     .unwrap();
     ///
-    /// let updated = progress.select_lesson(lesson2_id).unwrap();
-    /// assert_eq!(updated.selected_lesson().id(), lesson2_id);
+    /// progress.select_lesson(lesson2_id).unwrap();
+    /// assert_eq!(progress.selected_lesson().id(), lesson2_id);
     /// ```
-    pub fn select_lesson(&self, lesson_id: Id) -> Result<Self, CourseProgressError> {
-        let selected_lesson = Self::find_lesson_by_id(Some(lesson_id), &self.lesson_progress)?;
-        Ok(Self {
-            selected_lesson,
-            ..self.clone()
-        })
+    pub fn select_lesson(&mut self, lesson_id: Id) -> Result<(), CourseProgressError> {
+        self.selected_lesson = Self::find_lesson_by_id(Some(lesson_id), &self.lesson_progress)?;
+        Ok(())
     }
 
     /// Selects the next lesson in the course.
     ///
-    /// If the current lesson is the last one, returns unchanged (stays on last lesson).
+    /// If the current lesson is the last one, stays on the last lesson (no change).
     ///
     /// # Examples
     ///
@@ -55,7 +52,7 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::builder()
+    /// let mut progress = CourseProgress::builder()
     ///     .course_name("Course")
     ///     .user_email("user@example.com")
     ///     .lessons(vec![lesson1, lesson2])
@@ -63,29 +60,24 @@ impl CourseProgress {
     ///     .build()
     ///     .unwrap();
     ///
-    /// let next = progress.select_next_lesson();
-    /// assert_eq!(next.selected_lesson().id(), lesson2_id);
+    /// progress.select_next_lesson();
+    /// assert_eq!(progress.selected_lesson().id(), lesson2_id);
     /// ```
-    #[must_use]
-    pub fn select_next_lesson(&self) -> Self {
+    pub fn select_next_lesson(&mut self) {
         let current_index = self
             .lesson_progress
             .iter()
             .position(|lp| lp.id() == self.selected_lesson.id())
             .unwrap_or(0);
 
-        match self.lesson_progress.get(current_index + 1) {
-            Some(next_lesson) => Self {
-                selected_lesson: next_lesson.clone(),
-                ..self.clone()
-            },
-            None => self.clone(),
+        if let Some(next_lesson) = self.lesson_progress.get(current_index + 1) {
+            self.selected_lesson = next_lesson.clone();
         }
     }
 
     /// Selects the previous lesson in the course.
     ///
-    /// If the current lesson is the first one, returns unchanged (stays on the first lesson).
+    /// If the current lesson is the first one, stays on the first lesson (no change).
     ///
     /// # Examples
     ///
@@ -100,7 +92,7 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::builder()
+    /// let mut progress = CourseProgress::builder()
     ///     .course_name("Course")
     ///     .user_email("user@example.com")
     ///     .lessons(vec![lesson1, lesson2])
@@ -109,11 +101,10 @@ impl CourseProgress {
     ///     .build()
     ///     .unwrap();
     ///
-    /// let prev = progress.select_previous_lesson();
-    /// assert_eq!(prev.selected_lesson().id(), lesson1_id);
+    /// progress.select_previous_lesson();
+    /// assert_eq!(progress.selected_lesson().id(), lesson1_id);
     /// ```
-    #[must_use]
-    pub fn select_previous_lesson(&self) -> Self {
+    pub fn select_previous_lesson(&mut self) {
         let current_index = self
             .lesson_progress
             .iter()
@@ -121,15 +112,11 @@ impl CourseProgress {
             .unwrap_or(0);
 
         if current_index == 0 {
-            return self.clone();
+            return;
         }
 
-        match self.lesson_progress.get(current_index - 1) {
-            Some(prev_lesson) => Self {
-                selected_lesson: prev_lesson.clone(),
-                ..self.clone()
-            },
-            None => self.clone(),
+        if let Some(prev_lesson) = self.lesson_progress.get(current_index - 1) {
+            self.selected_lesson = prev_lesson.clone();
         }
     }
 
@@ -215,17 +202,17 @@ mod tests {
 
         #[test]
         fn test_select_lesson_changes_selection() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let second_lesson_id = progress.lesson_progress()[1].id();
 
-            let updated = progress.select_lesson(second_lesson_id).unwrap();
+            progress.select_lesson(second_lesson_id).unwrap();
 
-            assert_eq!(updated.selected_lesson().id(), second_lesson_id);
+            assert_eq!(progress.selected_lesson().id(), second_lesson_id);
         }
 
         #[test]
         fn test_select_lesson_fails_for_unknown_id() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let unknown_id = Id::new();
 
             let result = progress.select_lesson(unknown_id);
@@ -235,13 +222,14 @@ mod tests {
 
         #[test]
         fn test_select_lesson_preserves_other_fields() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
+            let original_name = progress.course_name().as_str().to_string();
             let second_lesson_id = progress.lesson_progress()[1].id();
 
-            let updated = progress.select_lesson(second_lesson_id).unwrap();
+            progress.select_lesson(second_lesson_id).unwrap();
 
-            assert_eq!(updated.course_name().as_str(), progress.course_name().as_str());
-            assert_eq!(updated.lesson_progress().len(), 3);
+            assert_eq!(progress.course_name().as_str(), original_name);
+            assert_eq!(progress.lesson_progress().len(), 3);
         }
     }
 
@@ -250,54 +238,57 @@ mod tests {
 
         #[test]
         fn test_select_next_lesson_moves_to_next() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let second_lesson_id = progress.lesson_progress()[1].id();
 
-            let updated = progress.select_next_lesson();
+            progress.select_next_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), second_lesson_id);
+            assert_eq!(progress.selected_lesson().id(), second_lesson_id);
         }
 
         #[test]
         fn test_select_next_lesson_twice_moves_to_third() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let third_lesson_id = progress.lesson_progress()[2].id();
 
-            let updated = progress.select_next_lesson().select_next_lesson();
+            progress.select_next_lesson();
+            progress.select_next_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), third_lesson_id);
+            assert_eq!(progress.selected_lesson().id(), third_lesson_id);
         }
 
         #[test]
         fn test_select_next_lesson_at_end_stays_at_end() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let last_lesson_id = progress.lesson_progress()[2].id();
 
-            let at_end = progress.select_next_lesson().select_next_lesson();
-            let still_at_end = at_end.select_next_lesson();
+            progress.select_next_lesson();
+            progress.select_next_lesson();
+            progress.select_next_lesson();
 
-            assert_eq!(still_at_end.selected_lesson().id(), last_lesson_id);
+            assert_eq!(progress.selected_lesson().id(), last_lesson_id);
         }
 
         #[test]
         fn test_select_next_lesson_single_lesson_stays() {
             let lesson = create_test_lesson("Only", 1800);
             let lesson_id = lesson.id();
-            let progress = create_progress(vec![lesson]);
+            let mut progress = create_progress(vec![lesson]);
 
-            let updated = progress.select_next_lesson();
+            progress.select_next_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), lesson_id);
+            assert_eq!(progress.selected_lesson().id(), lesson_id);
         }
 
         #[test]
         fn test_select_next_lesson_preserves_other_fields() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
+            let original_name = progress.course_name().as_str().to_string();
 
-            let updated = progress.select_next_lesson();
+            progress.select_next_lesson();
 
-            assert_eq!(updated.course_name().as_str(), progress.course_name().as_str());
-            assert_eq!(updated.lesson_progress().len(), 3);
+            assert_eq!(progress.course_name().as_str(), original_name);
+            assert_eq!(progress.lesson_progress().len(), 3);
         }
     }
 
@@ -311,7 +302,7 @@ mod tests {
             let lesson2 = create_test_lesson("Lesson 2", 2400);
             let lesson2_id = lesson2.id();
 
-            let progress = CourseProgress::builder()
+            let mut progress = CourseProgress::builder()
                 .course_name("Course")
                 .user_email("user@example.com")
                 .lessons(vec![lesson1, lesson2])
@@ -320,43 +311,43 @@ mod tests {
                 .build()
                 .unwrap();
 
-            let updated = progress.select_previous_lesson();
+            progress.select_previous_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), lesson1_id);
+            assert_eq!(progress.selected_lesson().id(), lesson1_id);
         }
 
         #[test]
         fn test_select_previous_lesson_at_start_stays_at_start() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let first_lesson_id = progress.lesson_progress()[0].id();
 
-            let updated = progress.select_previous_lesson();
+            progress.select_previous_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), first_lesson_id);
+            assert_eq!(progress.selected_lesson().id(), first_lesson_id);
         }
 
         #[test]
         fn test_select_previous_lesson_single_lesson_stays() {
             let lesson = create_test_lesson("Only", 1800);
             let lesson_id = lesson.id();
-            let progress = create_progress(vec![lesson]);
+            let mut progress = create_progress(vec![lesson]);
 
-            let updated = progress.select_previous_lesson();
+            progress.select_previous_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), lesson_id);
+            assert_eq!(progress.selected_lesson().id(), lesson_id);
         }
 
         #[test]
         fn test_select_previous_from_middle_moves_back() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let first_id = progress.lesson_progress()[0].id();
             let second_id = progress.lesson_progress()[1].id();
 
-            let at_second = progress.select_next_lesson();
-            assert_eq!(at_second.selected_lesson().id(), second_id);
+            progress.select_next_lesson();
+            assert_eq!(progress.selected_lesson().id(), second_id);
 
-            let back_to_first = at_second.select_previous_lesson();
-            assert_eq!(back_to_first.selected_lesson().id(), first_id);
+            progress.select_previous_lesson();
+            assert_eq!(progress.selected_lesson().id(), first_id);
         }
     }
 
@@ -365,22 +356,22 @@ mod tests {
 
         #[test]
         fn test_navigate_forward_and_back() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let first_id = progress.lesson_progress()[0].id();
             let second_id = progress.lesson_progress()[1].id();
             let third_id = progress.lesson_progress()[2].id();
 
-            let step1 = progress.select_next_lesson();
-            assert_eq!(step1.selected_lesson().id(), second_id);
+            progress.select_next_lesson();
+            assert_eq!(progress.selected_lesson().id(), second_id);
 
-            let step2 = step1.select_next_lesson();
-            assert_eq!(step2.selected_lesson().id(), third_id);
+            progress.select_next_lesson();
+            assert_eq!(progress.selected_lesson().id(), third_id);
 
-            let step3 = step2.select_previous_lesson();
-            assert_eq!(step3.selected_lesson().id(), second_id);
+            progress.select_previous_lesson();
+            assert_eq!(progress.selected_lesson().id(), second_id);
 
-            let step4 = step3.select_previous_lesson();
-            assert_eq!(step4.selected_lesson().id(), first_id);
+            progress.select_previous_lesson();
+            assert_eq!(progress.selected_lesson().id(), first_id);
         }
     }
 

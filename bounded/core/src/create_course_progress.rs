@@ -190,10 +190,10 @@ impl CreateCourseProgress {
     /// ).unwrap();
     ///
     /// let service = CreateCourseProgress::new(course.clone());
-    /// let progress = service.new_progress("user@example.com".to_string()).unwrap();
+    /// let mut progress = service.new_progress("user@example.com".to_string()).unwrap();
     ///
     /// // User starts the lesson
-    /// let progress = progress.start_selected_lesson();
+    /// progress.start_selected_lesson();
     ///
     /// // Course is updated (same structure for this example)
     /// let synced = service.sync_with(&progress).unwrap();
@@ -465,12 +465,12 @@ mod tests {
             let course = create_test_course("Test Course", vec![chapter]);
 
             let service = CreateCourseProgress::new(course);
-            let original = service
+            let mut progress = service
                 .new_progress("user@example.com".to_string())
                 .unwrap();
-            let started = original.start_selected_lesson();
+            progress.start_selected_lesson();
 
-            let synced = service.sync_with(&started).unwrap();
+            let synced = service.sync_with(&progress).unwrap();
 
             assert!(synced.selected_lesson().has_started());
         }
@@ -482,13 +482,13 @@ mod tests {
             let course = create_test_course("Test Course", vec![chapter]);
 
             let service = CreateCourseProgress::new(course);
-            let original = service
+            let mut progress = service
                 .new_progress("user@example.com".to_string())
                 .unwrap();
-            let started = original.start_selected_lesson();
-            let completed = started.end_selected_lesson().unwrap();
+            progress.start_selected_lesson();
+            progress.end_selected_lesson().unwrap();
 
-            let synced = service.sync_with(&completed).unwrap();
+            let synced = service.sync_with(&progress).unwrap();
 
             assert!(synced.selected_lesson().is_completed());
         }
@@ -503,12 +503,12 @@ mod tests {
             let course = create_test_course("Test Course", vec![chapter]);
 
             let service = CreateCourseProgress::new(course);
-            let original = service
+            let mut progress = service
                 .new_progress("user@example.com".to_string())
                 .unwrap();
-            let with_selection = original.select_next_lesson();
+            progress.select_next_lesson();
 
-            let synced = service.sync_with(&with_selection).unwrap();
+            let synced = service.sync_with(&progress).unwrap();
 
             assert_eq!(synced.selected_lesson().lesson_name().as_str(), "Lesson 2");
         }
@@ -533,18 +533,18 @@ mod tests {
             });
 
             let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
-            let progress = service
+            let mut progress = service
                 .new_progress("student@example.com".to_string())
                 .unwrap();
 
-            let started = progress.start_selected_lesson();
-            let completed = started.end_selected_lesson().unwrap();
-            completed.publish_ended();
+            progress.start_selected_lesson();
+            progress.end_selected_lesson().unwrap();
+            progress.publish_ended();
 
             let events = received_events.lock().unwrap();
             assert_eq!(events.len(), 1);
             assert_eq!(events[0].user_email().address(), "student@example.com");
-            assert_eq!(events[0].course_id(), completed.id());
+            assert_eq!(events[0].course_id(), progress.id());
         }
 
         #[test]
@@ -569,15 +569,13 @@ mod tests {
             });
 
             let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
-            let progress = service
+            let mut progress = service
                 .new_progress("user@example.com".to_string())
                 .unwrap();
 
-            let completed = progress
-                .start_selected_lesson()
-                .end_selected_lesson()
-                .unwrap();
-            completed.publish_ended();
+            progress.start_selected_lesson();
+            progress.end_selected_lesson().unwrap();
+            progress.publish_ended();
 
             assert_eq!(observer1_events.lock().unwrap().len(), 1);
             assert_eq!(observer2_events.lock().unwrap().len(), 1);
@@ -598,15 +596,15 @@ mod tests {
             });
 
             let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
-            let original = service
+            let mut progress = service
                 .new_progress("user@example.com".to_string())
                 .unwrap();
 
-            let started = original.start_selected_lesson();
-            let synced = service.sync_with(&started).unwrap();
+            progress.start_selected_lesson();
+            let mut synced = service.sync_with(&progress).unwrap();
 
-            let completed = synced.end_selected_lesson().unwrap();
-            completed.publish_ended();
+            synced.end_selected_lesson().unwrap();
+            synced.publish_ended();
 
             let events = received_events.lock().unwrap();
             assert_eq!(events.len(), 1);
@@ -627,14 +625,12 @@ mod tests {
             });
 
             let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
-            let progress = service
+            let mut progress = service
                 .new_progress("user@example.com".to_string())
                 .unwrap();
 
-            let _completed = progress
-                .start_selected_lesson()
-                .end_selected_lesson()
-                .unwrap();
+            progress.start_selected_lesson();
+            progress.end_selected_lesson().unwrap();
 
             // Event is NOT published automatically - must be explicit
             let events = received_events.lock().unwrap();

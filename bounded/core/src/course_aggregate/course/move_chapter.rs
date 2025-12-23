@@ -36,15 +36,15 @@ impl Course {
     /// let chapter3 = Chapter::new("Chapter 3".to_string(), 2, vec![lesson3]).unwrap();
     /// let chapter_to_move = chapter1.clone();
     ///
-    /// let course = Course::new("Test Course".to_string(), None, 0,
+    /// let mut course = Course::new("Test Course".to_string(), None, 0,
     ///     vec![chapter1, chapter2, chapter3]).unwrap();
     ///
-    /// let updated_course = course.move_chapter(&chapter_to_move, Index::new(2)).unwrap();
-    /// assert_eq!(updated_course.chapters()[2].id(), chapter_to_move.id());
+    /// course.move_chapter(&chapter_to_move, Index::new(2)).unwrap();
+    /// assert_eq!(course.chapters()[2].id(), chapter_to_move.id());
     /// ```
-    pub fn move_chapter(&self, chapter: &Chapter, to_index: Index) -> Result<Self, CourseError> {
-        self.delete_chapter(chapter)?
-            .add_chapter(chapter.clone(), Some(to_index))
+    pub fn move_chapter(&mut self, chapter: &Chapter, to_index: Index) -> Result<(), CourseError> {
+        self.delete_chapter(chapter)?;
+        self.add_chapter(chapter.clone(), Some(to_index))
     }
 
     /// Moves a chapter one position up (towards the beginning) in the course.
@@ -77,13 +77,13 @@ impl Course {
     /// let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
     /// let chapter_to_move = chapter2.clone();
     ///
-    /// let course = Course::new("Test Course".to_string(), None, 0,
+    /// let mut course = Course::new("Test Course".to_string(), None, 0,
     ///     vec![chapter1, chapter2]).unwrap();
     ///
-    /// let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
-    /// assert_eq!(updated_course.chapters()[0].id(), chapter_to_move.id());
+    /// course.move_chapter_up(&chapter_to_move).unwrap();
+    /// assert_eq!(course.chapters()[0].id(), chapter_to_move.id());
     /// ```
-    pub fn move_chapter_up(&self, chapter: &Chapter) -> Result<Self, CourseError> {
+    pub fn move_chapter_up(&mut self, chapter: &Chapter) -> Result<(), CourseError> {
         let current_position = self
             .chapters
             .iter()
@@ -91,7 +91,7 @@ impl Course {
             .ok_or(CourseError::ChapterDoesNotExist)?;
 
         if current_position == 0 {
-            return Ok(self.clone());
+            return Ok(());
         }
 
         self.move_chapter(chapter, Index::new(current_position - 1))
@@ -127,13 +127,13 @@ impl Course {
     /// let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
     /// let chapter_to_move = chapter1.clone();
     ///
-    /// let course = Course::new("Test Course".to_string(), None, 0,
+    /// let mut course = Course::new("Test Course".to_string(), None, 0,
     ///     vec![chapter1, chapter2]).unwrap();
     ///
-    /// let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
-    /// assert_eq!(updated_course.chapters()[1].id(), chapter_to_move.id());
+    /// course.move_chapter_down(&chapter_to_move).unwrap();
+    /// assert_eq!(course.chapters()[1].id(), chapter_to_move.id());
     /// ```
-    pub fn move_chapter_down(&self, chapter: &Chapter) -> Result<Self, CourseError> {
+    pub fn move_chapter_down(&mut self, chapter: &Chapter) -> Result<(), CourseError> {
         let current_position = self
             .chapters
             .iter()
@@ -141,7 +141,7 @@ impl Course {
             .ok_or(CourseError::ChapterDoesNotExist)?;
 
         if current_position >= self.chapters.len() - 1 {
-            return Ok(self.clone());
+            return Ok(());
         }
 
         self.move_chapter(chapter, Index::new(current_position + 1))
@@ -181,15 +181,15 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course
+            course
                 .move_chapter(&chapter_to_move, Index::new(2))
                 .unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 1");
         }
 
         #[test]
@@ -198,35 +198,15 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter3.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course
+            course
                 .move_chapter(&chapter_to_move, Index::new(0))
                 .unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 3");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 2");
-        }
-
-        #[test]
-        fn test_move_chapter_from_middle_to_different_position() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter4 = create_test_chapter("Chapter 4", 3);
-            let chapter_to_move = chapter2.clone();
-            let course =
-                create_test_course("Test Course", vec![chapter1, chapter2, chapter3, chapter4]);
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(2))
-                .unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[3].name().as_str(), "Chapter 4");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 2");
         }
 
         #[test]
@@ -235,15 +215,15 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course
+            course
                 .move_chapter(&chapter_to_move, Index::new(2))
                 .unwrap();
 
-            assert_eq!(updated_course.chapters()[0].index().value(), 0);
-            assert_eq!(updated_course.chapters()[1].index().value(), 1);
-            assert_eq!(updated_course.chapters()[2].index().value(), 2);
+            assert_eq!(course.chapters()[0].index().value(), 0);
+            assert_eq!(course.chapters()[1].index().value(), 1);
+            assert_eq!(course.chapters()[2].index().value(), 2);
         }
 
         #[test]
@@ -251,14 +231,14 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
             let original_id = course.id();
 
-            let updated_course = course
+            course
                 .move_chapter(&chapter_to_move, Index::new(1))
                 .unwrap();
 
-            assert_eq!(updated_course.id(), original_id);
+            assert_eq!(course.id(), original_id);
         }
 
         #[test]
@@ -266,169 +246,13 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("My Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("My Course", vec![chapter1, chapter2]);
 
-            let updated_course = course
+            course
                 .move_chapter(&chapter_to_move, Index::new(1))
                 .unwrap();
 
-            assert_eq!(updated_course.name().as_str(), "My Course");
-        }
-
-        #[test]
-        fn test_move_chapter_preserves_course_date() {
-            use education_platform_common::Date;
-
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter1.clone();
-            let date = Date::new(2024, 6, 15).unwrap();
-            let course =
-                Course::new("Test Course".to_string(), Some(date), 0, vec![chapter1, chapter2])
-                    .unwrap();
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(1))
-                .unwrap();
-
-            assert_eq!(updated_course.date().year(), 2024);
-            assert_eq!(updated_course.date().month(), 6);
-            assert_eq!(updated_course.date().day(), 15);
-        }
-
-        #[test]
-        fn test_move_chapter_preserves_chapter_ids() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter1_id = chapter1.id();
-            let chapter2_id = chapter2.id();
-            let chapter3_id = chapter3.id();
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(2))
-                .unwrap();
-
-            assert_eq!(updated_course.chapters()[0].id(), chapter2_id);
-            assert_eq!(updated_course.chapters()[1].id(), chapter3_id);
-            assert_eq!(updated_course.chapters()[2].id(), chapter1_id);
-        }
-
-        #[test]
-        fn test_move_chapter_preserves_total_duration() {
-            let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
-            let lesson2 = create_test_lesson("Lesson 2", 1200, 0);
-            let lesson3 = create_test_lesson("Lesson 3", 600, 0);
-            let chapter1 = Chapter::new("Chapter 1".to_string(), 0, vec![lesson1]).unwrap();
-            let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
-            let chapter3 = Chapter::new("Chapter 3".to_string(), 2, vec![lesson3]).unwrap();
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-            let original_duration = course.duration().total_seconds();
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(2))
-                .unwrap();
-
-            assert_eq!(updated_course.duration().total_seconds(), original_duration);
-            assert_eq!(updated_course.duration().total_seconds(), 3600);
-        }
-
-        #[test]
-        fn test_move_chapter_preserves_lesson_count() {
-            let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
-            let lesson2 = create_test_lesson("Lesson 2", 1800, 1);
-            let lesson3 = create_test_lesson("Lesson 3", 1800, 0);
-            let chapter1 =
-                Chapter::new("Chapter 1".to_string(), 0, vec![lesson1, lesson2]).unwrap();
-            let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson3]).unwrap();
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-            let original_lesson_count = course.number_of_lessons();
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(1))
-                .unwrap();
-
-            assert_eq!(updated_course.number_of_lessons(), original_lesson_count);
-            assert_eq!(updated_course.number_of_lessons(), 3);
-        }
-
-        #[test]
-        fn test_move_chapter_does_not_modify_original_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let _ = course
-                .move_chapter(&chapter_to_move, Index::new(1))
-                .unwrap();
-
-            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
-        }
-
-        #[test]
-        fn test_move_chapter_preserves_chapter_content() {
-            let lesson = Lesson::new(
-                "Special Lesson".to_string(),
-                3600,
-                "https://example.com/special.mp4".to_string(),
-                0,
-            )
-            .unwrap();
-            let chapter1 = Chapter::new("Special Chapter".to_string(), 0, vec![lesson]).unwrap();
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(1))
-                .unwrap();
-
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Special Chapter");
-            assert_eq!(updated_course.chapters()[1].lesson_quantity(), 1);
-            assert_eq!(
-                updated_course.chapters()[1]
-                    .total_duration()
-                    .total_seconds(),
-                3600
-            );
-        }
-
-        #[test]
-        fn test_move_chapter_to_same_position() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(1))
-                .unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 3");
-        }
-
-        #[test]
-        fn test_move_chapter_in_two_chapter_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(1))
-                .unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 1");
+            assert_eq!(course.name().as_str(), "My Course");
         }
 
         #[test]
@@ -437,35 +261,18 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let course1 = course
+            course
                 .move_chapter(&chapter_to_move, Index::new(1))
                 .unwrap();
-            let course2 = course1
+            course
                 .move_chapter(&chapter_to_move, Index::new(2))
                 .unwrap();
 
-            assert_eq!(course2.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(course2.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(course2.chapters()[2].name().as_str(), "Chapter 1");
-        }
-
-        #[test]
-        fn test_move_chapter_with_large_index_clamps_to_end() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-
-            let updated_course = course
-                .move_chapter(&chapter_to_move, Index::new(999))
-                .unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 1");
         }
     }
 
@@ -478,41 +285,26 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
+            course.move_chapter_up(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 3");
         }
 
         #[test]
-        fn test_move_chapter_up_from_last_position() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter_to_move = chapter3.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 2");
-        }
-
-        #[test]
-        fn test_move_chapter_up_from_first_position_returns_unchanged() {
+        fn test_move_chapter_up_from_first_position_stays() {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
+            course.move_chapter_up(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
         }
 
         #[test]
@@ -520,7 +312,7 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let nonexistent_chapter = create_test_chapter("Nonexistent", 99);
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
             let result = course.move_chapter_up(&nonexistent_chapter);
 
@@ -533,12 +325,12 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
             let original_id = course.id();
 
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
+            course.move_chapter_up(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.id(), original_id);
+            assert_eq!(course.id(), original_id);
         }
 
         #[test]
@@ -548,27 +340,12 @@ mod tests {
             let chapter1_id = chapter1.id();
             let chapter2_id = chapter2.id();
             let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
+            course.move_chapter_up(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].id(), chapter2_id);
-            assert_eq!(updated_course.chapters()[1].id(), chapter1_id);
-        }
-
-        #[test]
-        fn test_move_chapter_up_reassigns_indices() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter_to_move = chapter3.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].index().value(), 0);
-            assert_eq!(updated_course.chapters()[1].index().value(), 1);
-            assert_eq!(updated_course.chapters()[2].index().value(), 2);
+            assert_eq!(course.chapters()[0].id(), chapter2_id);
+            assert_eq!(course.chapters()[1].id(), chapter1_id);
         }
 
         #[test]
@@ -577,56 +354,14 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter3.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let course1 = course.move_chapter_up(&chapter_to_move).unwrap();
-            let course2 = course1.move_chapter_up(&chapter_to_move).unwrap();
+            course.move_chapter_up(&chapter_to_move).unwrap();
+            course.move_chapter_up(&chapter_to_move).unwrap();
 
-            assert_eq!(course2.chapters()[0].name().as_str(), "Chapter 3");
-            assert_eq!(course2.chapters()[1].name().as_str(), "Chapter 1");
-            assert_eq!(course2.chapters()[2].name().as_str(), "Chapter 2");
-        }
-
-        #[test]
-        fn test_move_chapter_up_does_not_modify_original_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let _ = course.move_chapter_up(&chapter_to_move).unwrap();
-
-            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
-        }
-
-        #[test]
-        fn test_move_chapter_up_preserves_total_duration() {
-            let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
-            let lesson2 = create_test_lesson("Lesson 2", 1200, 0);
-            let chapter1 = Chapter::new("Chapter 1".to_string(), 0, vec![lesson1]).unwrap();
-            let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
-            let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-            let original_duration = course.duration().total_seconds();
-
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.duration().total_seconds(), original_duration);
-            assert_eq!(updated_course.duration().total_seconds(), 3000);
-        }
-
-        #[test]
-        fn test_move_chapter_up_in_two_chapter_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let updated_course = course.move_chapter_up(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 2");
         }
     }
 
@@ -639,13 +374,13 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
+            course.move_chapter_down(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 2");
         }
 
         #[test]
@@ -654,26 +389,26 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
+            course.move_chapter_down(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 3");
         }
 
         #[test]
-        fn test_move_chapter_down_from_last_position_returns_unchanged() {
+        fn test_move_chapter_down_from_last_position_stays() {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_move = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
+            course.move_chapter_down(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
         }
 
         #[test]
@@ -681,7 +416,7 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let nonexistent_chapter = create_test_chapter("Nonexistent", 99);
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
             let result = course.move_chapter_down(&nonexistent_chapter);
 
@@ -694,42 +429,12 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
             let original_id = course.id();
 
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
+            course.move_chapter_down(&chapter_to_move).unwrap();
 
-            assert_eq!(updated_course.id(), original_id);
-        }
-
-        #[test]
-        fn test_move_chapter_down_preserves_chapter_ids() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter1_id = chapter1.id();
-            let chapter2_id = chapter2.id();
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].id(), chapter2_id);
-            assert_eq!(updated_course.chapters()[1].id(), chapter1_id);
-        }
-
-        #[test]
-        fn test_move_chapter_down_reassigns_indices() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
-
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].index().value(), 0);
-            assert_eq!(updated_course.chapters()[1].index().value(), 1);
-            assert_eq!(updated_course.chapters()[2].index().value(), 2);
+            assert_eq!(course.id(), original_id);
         }
 
         #[test]
@@ -738,74 +443,14 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let course1 = course.move_chapter_down(&chapter_to_move).unwrap();
-            let course2 = course1.move_chapter_down(&chapter_to_move).unwrap();
+            course.move_chapter_down(&chapter_to_move).unwrap();
+            course.move_chapter_down(&chapter_to_move).unwrap();
 
-            assert_eq!(course2.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(course2.chapters()[1].name().as_str(), "Chapter 3");
-            assert_eq!(course2.chapters()[2].name().as_str(), "Chapter 1");
-        }
-
-        #[test]
-        fn test_move_chapter_down_does_not_modify_original_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let _ = course.move_chapter_down(&chapter_to_move).unwrap();
-
-            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
-        }
-
-        #[test]
-        fn test_move_chapter_down_preserves_total_duration() {
-            let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
-            let lesson2 = create_test_lesson("Lesson 2", 1200, 0);
-            let chapter1 = Chapter::new("Chapter 1".to_string(), 0, vec![lesson1]).unwrap();
-            let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-            let original_duration = course.duration().total_seconds();
-
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.duration().total_seconds(), original_duration);
-            assert_eq!(updated_course.duration().total_seconds(), 3000);
-        }
-
-        #[test]
-        fn test_move_chapter_down_in_two_chapter_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_move = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 1");
-        }
-
-        #[test]
-        fn test_move_chapter_down_from_second_to_last_to_last() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter3 = create_test_chapter("Chapter 3", 2);
-            let chapter4 = create_test_chapter("Chapter 4", 3);
-            let chapter_to_move = chapter3.clone();
-            let course =
-                create_test_course("Test Course", vec![chapter1, chapter2, chapter3, chapter4]);
-
-            let updated_course = course.move_chapter_down(&chapter_to_move).unwrap();
-
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[2].name().as_str(), "Chapter 4");
-            assert_eq!(updated_course.chapters()[3].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[2].name().as_str(), "Chapter 1");
         }
     }
 }

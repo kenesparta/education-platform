@@ -13,7 +13,7 @@ impl CourseProgress {
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::builder()
+    /// let mut progress = CourseProgress::builder()
     ///     .course_name("Course")
     ///     .user_email("user@example.com")
     ///     .lessons(vec![lesson])
@@ -21,12 +21,11 @@ impl CourseProgress {
     ///     .build()
     ///     .unwrap();
     ///
-    /// let started = progress.start_selected_lesson();
-    /// assert!(started.selected_lesson().has_started());
+    /// progress.start_selected_lesson();
+    /// assert!(progress.selected_lesson().has_started());
     /// ```
-    #[must_use]
-    pub fn start_selected_lesson(&self) -> Self {
-        self.start_lesson(self.selected_lesson.id())
+    pub fn start_selected_lesson(&mut self) {
+        self.start_lesson(self.selected_lesson.id());
     }
 
     /// Ends the currently selected lesson.
@@ -44,7 +43,7 @@ impl CourseProgress {
     ///
     /// let lesson = LessonProgress::new("Intro".to_string(), 1800, None, None).unwrap();
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::builder()
+    /// let mut progress = CourseProgress::builder()
     ///     .course_name("Course")
     ///     .user_email("user@example.com")
     ///     .lessons(vec![lesson])
@@ -52,11 +51,11 @@ impl CourseProgress {
     ///     .build()
     ///     .unwrap();
     ///
-    /// let started = progress.start_selected_lesson();
-    /// let ended = started.end_selected_lesson().unwrap();
-    /// assert!(ended.selected_lesson().has_ended());
+    /// progress.start_selected_lesson();
+    /// progress.end_selected_lesson().unwrap();
+    /// assert!(progress.selected_lesson().has_ended());
     /// ```
-    pub fn end_selected_lesson(&self) -> Result<Self, CourseProgressError> {
+    pub fn end_selected_lesson(&mut self) -> Result<(), CourseProgressError> {
         self.end_lesson(self.selected_lesson.id())
     }
 
@@ -78,7 +77,7 @@ impl CourseProgress {
     /// let lesson2_id = lesson2.id();
     ///
     /// let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
-    /// let progress = CourseProgress::builder()
+    /// let mut progress = CourseProgress::builder()
     ///     .course_name("Course")
     ///     .user_email("user@example.com")
     ///     .lessons(vec![lesson1, lesson2])
@@ -86,12 +85,14 @@ impl CourseProgress {
     ///     .build()
     ///     .unwrap();
     ///
-    /// let started = progress.start_selected_lesson();
-    /// let next = started.end_and_select_next_lesson().unwrap();
-    /// assert_eq!(next.selected_lesson().id(), lesson2_id);
+    /// progress.start_selected_lesson();
+    /// progress.end_and_select_next_lesson().unwrap();
+    /// assert_eq!(progress.selected_lesson().id(), lesson2_id);
     /// ```
-    pub fn end_and_select_next_lesson(&self) -> Result<Self, CourseProgressError> {
-        Ok(self.end_selected_lesson()?.select_next_lesson())
+    pub fn end_and_select_next_lesson(&mut self) -> Result<(), CourseProgressError> {
+        self.end_selected_lesson()?;
+        self.select_next_lesson();
+        Ok(())
     }
 }
 
@@ -143,21 +144,21 @@ mod tests {
 
         #[test]
         fn test_start_selected_lesson_starts_current() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
 
-            let updated = progress.start_selected_lesson();
+            progress.start_selected_lesson();
 
-            assert!(updated.lesson_progress()[0].has_started());
+            assert!(progress.lesson_progress()[0].has_started());
         }
 
         #[test]
         fn test_start_selected_lesson_preserves_selection() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
             let selected_id = progress.selected_lesson().id();
 
-            let updated = progress.start_selected_lesson();
+            progress.start_selected_lesson();
 
-            assert_eq!(updated.selected_lesson().id(), selected_id);
+            assert_eq!(progress.selected_lesson().id(), selected_id);
         }
     }
 
@@ -167,16 +168,16 @@ mod tests {
         #[test]
         fn test_end_selected_lesson_ends_current() {
             let lesson = create_started_lesson("Lesson", 1800);
-            let progress = create_progress(vec![lesson]);
+            let mut progress = create_progress(vec![lesson]);
 
-            let updated = progress.end_selected_lesson().unwrap();
+            progress.end_selected_lesson().unwrap();
 
-            assert!(updated.lesson_progress()[0].has_ended());
+            assert!(progress.lesson_progress()[0].has_ended());
         }
 
         #[test]
         fn test_end_selected_lesson_fails_if_not_started() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
 
             let result = progress.end_selected_lesson();
 
@@ -193,17 +194,17 @@ mod tests {
             let lesson2 = create_test_lesson("Lesson 2", 2400);
             let lesson2_id = lesson2.id();
 
-            let progress = create_progress(vec![lesson1, lesson2]);
+            let mut progress = create_progress(vec![lesson1, lesson2]);
 
-            let updated = progress.end_and_select_next_lesson().unwrap();
+            progress.end_and_select_next_lesson().unwrap();
 
-            assert!(updated.lesson_progress()[0].has_ended());
-            assert_eq!(updated.selected_lesson().id(), lesson2_id);
+            assert!(progress.lesson_progress()[0].has_ended());
+            assert_eq!(progress.selected_lesson().id(), lesson2_id);
         }
 
         #[test]
         fn test_end_and_select_next_lesson_fails_if_not_started() {
-            let progress = create_test_progress();
+            let mut progress = create_test_progress();
 
             let result = progress.end_and_select_next_lesson();
 
@@ -215,12 +216,12 @@ mod tests {
             let lesson1 = create_started_lesson("Lesson 1", 1800);
             let lesson1_id = lesson1.id();
 
-            let progress = create_progress(vec![lesson1]);
+            let mut progress = create_progress(vec![lesson1]);
 
-            let updated = progress.end_and_select_next_lesson().unwrap();
+            progress.end_and_select_next_lesson().unwrap();
 
-            assert!(updated.lesson_progress()[0].has_ended());
-            assert_eq!(updated.selected_lesson().id(), lesson1_id);
+            assert!(progress.lesson_progress()[0].has_ended());
+            assert_eq!(progress.selected_lesson().id(), lesson1_id);
         }
     }
 }

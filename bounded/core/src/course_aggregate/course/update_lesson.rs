@@ -36,7 +36,7 @@ impl Course {
     ///     vec![lesson],
     /// ).unwrap();
     ///
-    /// let course = Course::new(
+    /// let mut course = Course::new(
     ///     "Rust Programming".to_string(),
     ///     None,
     ///     0,
@@ -46,21 +46,23 @@ impl Course {
     /// let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
     /// updated_lesson.update_name("Introduction Updated".to_string()).unwrap();
     ///
-    /// let updated_course = course.update_lesson(updated_lesson).unwrap();
-    /// assert_eq!(updated_course.chapters()[0].lessons()[0].name().as_str(), "Introduction Updated");
+    /// course.update_lesson(updated_lesson).unwrap();
+    /// assert_eq!(course.chapters()[0].lessons()[0].name().as_str(), "Introduction Updated");
     /// ```
-    pub fn update_lesson(&self, lesson: Lesson) -> Result<Self, CourseError> {
+    pub fn update_lesson(&mut self, lesson: Lesson) -> Result<(), CourseError> {
         let chapter_with_lesson = self
             .chapters
             .iter()
             .find(|chapter| chapter.lessons().iter().any(|l| l.id() == lesson.id()))
             .ok_or(CourseError::LessonDoesNotExist)?;
 
+        let chapter_index = chapter_with_lesson.index();
+
         let chapters: Result<Vec<Chapter>, CourseError> = self
             .chapters
             .iter()
             .map(|chapter| {
-                if chapter.index() != chapter_with_lesson.index() {
+                if chapter.index() != chapter_index {
                     return Ok(chapter.clone());
                 }
 
@@ -81,15 +83,13 @@ impl Course {
             })
             .collect();
 
-        let chapters = chapters?;
-        let (duration, number_of_lessons) = Self::calculate_totals(&chapters, Duration::default());
+        self.chapters = chapters?;
+        let (duration, number_of_lessons) =
+            Self::calculate_totals(&self.chapters, Duration::default());
+        self.duration = duration;
+        self.number_of_lessons = number_of_lessons;
 
-        Ok(Self {
-            chapters,
-            duration,
-            number_of_lessons,
-            ..self.clone()
-        })
+        Ok(())
     }
 }
 
@@ -118,38 +118,32 @@ mod tests {
         fn test_update_lesson_updates_name() {
             let lesson = create_test_lesson("Original", 1800, 0);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson
                 .update_name("Updated Name".to_string())
                 .unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(
-                updated_course.chapters()[0].lessons()[0].name().as_str(),
-                "Updated Name"
-            );
+            assert_eq!(course.chapters()[0].lessons()[0].name().as_str(), "Updated Name");
         }
 
         #[test]
         fn test_update_lesson_updates_duration() {
             let lesson = create_test_lesson("Lesson", 1800, 0);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_duration(3600);
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(
-                updated_course.chapters()[0].lessons()[0]
-                    .duration()
-                    .total_seconds(),
-                3600
-            );
+            assert_eq!(course.chapters()[0].lessons()[0].duration().total_seconds(), 3600);
         }
 
         #[test]
@@ -157,16 +151,17 @@ mod tests {
             let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
             let lesson2 = create_test_lesson("Lesson 2", 1200, 1);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson1, lesson2]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             assert_eq!(course.duration().total_seconds(), 3000);
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_duration(3600);
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.duration().total_seconds(), 4800);
+            assert_eq!(course.duration().total_seconds(), 4800);
         }
 
         #[test]
@@ -175,7 +170,7 @@ mod tests {
             let lesson2 = create_test_lesson("Lesson 2", 1200, 0);
             let chapter1 = create_test_chapter("Chapter One", 0, vec![lesson1]);
             let chapter2 = create_test_chapter("Chapter Two", 1, vec![lesson2]);
-            let course =
+            let mut course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();
 
             let mut updated_lesson = course.chapters()[1].lessons()[0].clone();
@@ -183,41 +178,40 @@ mod tests {
                 .update_name("Updated Lesson 2".to_string())
                 .unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(
-                updated_course.chapters()[1].lessons()[0].name().as_str(),
-                "Updated Lesson 2"
-            );
+            assert_eq!(course.chapters()[1].lessons()[0].name().as_str(), "Updated Lesson 2");
         }
 
         #[test]
         fn test_update_lesson_preserves_course_id() {
             let lesson = create_test_lesson("Lesson", 1800, 0);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
             let original_id = course.id();
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_name("Updated".to_string()).unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.id(), original_id);
+            assert_eq!(course.id(), original_id);
         }
 
         #[test]
         fn test_update_lesson_preserves_course_name() {
             let lesson = create_test_lesson("Lesson", 1800, 0);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("My Course Name".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("My Course Name".to_string(), None, 0, vec![chapter]).unwrap();
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_name("Updated".to_string()).unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.name().as_str(), "My Course Name");
+            assert_eq!(course.name().as_str(), "My Course Name");
         }
 
         #[test]
@@ -226,43 +220,43 @@ mod tests {
             let lesson2 = create_test_lesson("Lesson 2", 1200, 1);
             let lesson3 = create_test_lesson("Lesson 3", 900, 2);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson1, lesson2, lesson3]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             let mut updated_lesson = course.chapters()[0].lessons()[1].clone();
             updated_lesson
                 .update_name("Updated Lesson 2".to_string())
                 .unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].lessons()[0].name().as_str(), "Lesson 1");
-            assert_eq!(
-                updated_course.chapters()[0].lessons()[1].name().as_str(),
-                "Updated Lesson 2"
-            );
-            assert_eq!(updated_course.chapters()[0].lessons()[2].name().as_str(), "Lesson 3");
+            assert_eq!(course.chapters()[0].lessons()[0].name().as_str(), "Lesson 1");
+            assert_eq!(course.chapters()[0].lessons()[1].name().as_str(), "Updated Lesson 2");
+            assert_eq!(course.chapters()[0].lessons()[2].name().as_str(), "Lesson 3");
         }
 
         #[test]
         fn test_update_lesson_preserves_lesson_id() {
             let lesson = create_test_lesson("Lesson", 1800, 0);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             let original_lesson_id = course.chapters()[0].lessons()[0].id();
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_name("Updated".to_string()).unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].lessons()[0].id(), original_lesson_id);
+            assert_eq!(course.chapters()[0].lessons()[0].id(), original_lesson_id);
         }
 
         #[test]
         fn test_update_lesson_nonexistent_returns_error() {
             let lesson = create_test_lesson("Lesson", 1800, 0);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             let nonexistent_lesson = create_test_lesson("Nonexistent", 1800, 99);
 
@@ -273,36 +267,22 @@ mod tests {
         }
 
         #[test]
-        fn test_update_lesson_does_not_modify_original_course() {
-            let lesson = create_test_lesson("Original", 1800, 0);
-            let chapter = create_test_chapter("Chapter One", 0, vec![lesson]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
-
-            let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
-            updated_lesson.update_name("Updated".to_string()).unwrap();
-
-            let _ = course.update_lesson(updated_lesson).unwrap();
-
-            assert_eq!(course.chapters()[0].lessons()[0].name().as_str(), "Original");
-        }
-
-        #[test]
         fn test_update_lesson_preserves_chapter_structure() {
             let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
             let lesson2 = create_test_lesson("Lesson 2", 1200, 0);
             let chapter1 = create_test_chapter("Chapter One", 0, vec![lesson1]);
             let chapter2 = create_test_chapter("Chapter Two", 1, vec![lesson2]);
-            let course =
+            let mut course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_name("Updated".to_string()).unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.chapter_quantity(), 2);
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter One");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter Two");
+            assert_eq!(course.chapter_quantity(), 2);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter One");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter Two");
         }
 
         #[test]
@@ -310,14 +290,15 @@ mod tests {
             let lesson1 = create_test_lesson("Lesson 1", 1800, 0);
             let lesson2 = create_test_lesson("Lesson 2", 1200, 1);
             let chapter = create_test_chapter("Chapter One", 0, vec![lesson1, lesson2]);
-            let course = Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
+            let mut course =
+                Course::new("Test Course".to_string(), None, 0, vec![chapter]).unwrap();
 
             let mut updated_lesson = course.chapters()[0].lessons()[0].clone();
             updated_lesson.update_name("Updated".to_string()).unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(updated_course.number_of_lessons(), 2);
+            assert_eq!(course.number_of_lessons(), 2);
         }
 
         #[test]
@@ -332,7 +313,7 @@ mod tests {
             ];
             let chapter1 = create_test_chapter("Chapter One", 0, lessons1);
             let chapter2 = create_test_chapter("Chapter Two", 1, lessons2);
-            let course =
+            let mut course =
                 Course::new("Test Course".to_string(), None, 0, vec![chapter1, chapter2]).unwrap();
 
             let mut updated_lesson = course.chapters()[1].lessons()[1].clone();
@@ -340,13 +321,10 @@ mod tests {
                 .update_name("Updated Lesson 4".to_string())
                 .unwrap();
 
-            let updated_course = course.update_lesson(updated_lesson).unwrap();
+            course.update_lesson(updated_lesson).unwrap();
 
-            assert_eq!(
-                updated_course.chapters()[1].lessons()[1].name().as_str(),
-                "Updated Lesson 4"
-            );
-            assert_eq!(updated_course.number_of_lessons(), 4);
+            assert_eq!(course.chapters()[1].lessons()[1].name().as_str(), "Updated Lesson 4");
+            assert_eq!(course.number_of_lessons(), 4);
         }
     }
 }

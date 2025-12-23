@@ -4,9 +4,9 @@ use education_platform_common::{Duration, Entity};
 impl Course {
     /// Removes a chapter from the course by its identity.
     ///
-    /// Creates a new course with the specified chapter removed. Remaining
-    /// chapters have their indices reassigned sequentially starting from zero.
-    /// The course's total duration and lesson count are recalculated.
+    /// Removes the specified chapter from this course. Remaining chapters have
+    /// their indices reassigned sequentially starting from zero. The course's
+    /// total duration and lesson count are recalculated.
     ///
     /// # Arguments
     ///
@@ -40,18 +40,18 @@ impl Course {
     /// let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
     /// let chapter_to_delete = chapter1.clone();
     ///
-    /// let course = Course::new(
+    /// let mut course = Course::new(
     ///     "My Course".to_string(),
     ///     None,
     ///     0,
     ///     vec![chapter1, chapter2],
     /// ).unwrap();
     ///
-    /// let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
-    /// assert_eq!(updated_course.chapter_quantity(), 1);
-    /// assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
+    /// course.delete_chapter(&chapter_to_delete).unwrap();
+    /// assert_eq!(course.chapter_quantity(), 1);
+    /// assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
     /// ```
-    pub fn delete_chapter(&self, chapter: &Chapter) -> Result<Self, CourseError> {
+    pub fn delete_chapter(&mut self, chapter: &Chapter) -> Result<(), CourseError> {
         let chapters: Vec<Chapter> = self
             .chapters
             .iter()
@@ -59,15 +59,13 @@ impl Course {
             .cloned()
             .collect();
 
-        let chapters = Self::reassign_index_chapters(&chapters)?;
-        let (duration, number_of_lessons) = Self::calculate_totals(&chapters, Duration::default());
+        self.chapters = Self::reassign_index_chapters(&chapters)?;
+        let (duration, number_of_lessons) =
+            Self::calculate_totals(&self.chapters, Duration::default());
+        self.duration = duration;
+        self.number_of_lessons = number_of_lessons;
 
-        Ok(Self {
-            chapters,
-            duration,
-            number_of_lessons,
-            ..self.clone()
-        })
+        Ok(())
     }
 }
 
@@ -104,13 +102,13 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapter_quantity(), 2);
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapter_quantity(), 2);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 3");
         }
 
         #[test]
@@ -119,13 +117,13 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_delete = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapter_quantity(), 2);
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapter_quantity(), 2);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 3");
         }
 
         #[test]
@@ -134,20 +132,20 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_delete = chapter3.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapter_quantity(), 2);
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapter_quantity(), 2);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
         }
 
         #[test]
         fn test_delete_last_chapter_returns_error() {
             let chapter = create_test_chapter("Only Chapter", 0);
             let chapter_to_delete = chapter.clone();
-            let course = create_test_course("Test Course", vec![chapter]);
+            let mut course = create_test_course("Test Course", vec![chapter]);
 
             let result = course.delete_chapter(&chapter_to_delete);
 
@@ -161,12 +159,12 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].index().value(), 0);
-            assert_eq!(updated_course.chapters()[1].index().value(), 1);
+            assert_eq!(course.chapters()[0].index().value(), 0);
+            assert_eq!(course.chapters()[1].index().value(), 1);
         }
 
         #[test]
@@ -174,12 +172,12 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
             let original_id = course.id();
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.id(), original_id);
+            assert_eq!(course.id(), original_id);
         }
 
         #[test]
@@ -187,11 +185,11 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("My Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("My Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.name().as_str(), "My Course");
+            assert_eq!(course.name().as_str(), "My Course");
         }
 
         #[test]
@@ -202,29 +200,15 @@ mod tests {
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_delete = chapter1.clone();
             let date = Date::new(2024, 6, 15).unwrap();
-            let course =
+            let mut course =
                 Course::new("Test Course".to_string(), Some(date), 0, vec![chapter1, chapter2])
                     .unwrap();
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.date().year(), 2024);
-            assert_eq!(updated_course.date().month(), 6);
-            assert_eq!(updated_course.date().day(), 15);
-        }
-
-        #[test]
-        fn test_delete_chapter_does_not_modify_original_course() {
-            let chapter1 = create_test_chapter("Chapter 1", 0);
-            let chapter2 = create_test_chapter("Chapter 2", 1);
-            let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
-            let original_count = course.chapter_quantity();
-
-            let _ = course.delete_chapter(&chapter_to_delete).unwrap();
-
-            assert_eq!(course.chapter_quantity(), original_count);
-            assert_eq!(course.chapter_quantity(), 2);
+            assert_eq!(course.date().year(), 2024);
+            assert_eq!(course.date().month(), 6);
+            assert_eq!(course.date().day(), 15);
         }
 
         #[test]
@@ -235,12 +219,12 @@ mod tests {
             let chapter2_id = chapter2.id();
             let chapter3_id = chapter3.id();
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].id(), chapter2_id);
-            assert_eq!(updated_course.chapters()[1].id(), chapter3_id);
+            assert_eq!(course.chapters()[0].id(), chapter2_id);
+            assert_eq!(course.chapters()[1].id(), chapter3_id);
         }
 
         #[test]
@@ -252,11 +236,11 @@ mod tests {
             let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
             let chapter3 = Chapter::new("Chapter 3".to_string(), 2, vec![lesson3]).unwrap();
             let chapter_to_delete = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.duration().total_seconds(), 2400);
+            assert_eq!(course.duration().total_seconds(), 2400);
         }
 
         #[test]
@@ -268,11 +252,11 @@ mod tests {
                 Chapter::new("Chapter 1".to_string(), 0, vec![lesson1, lesson2]).unwrap();
             let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson3]).unwrap();
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.number_of_lessons(), 1);
+            assert_eq!(course.number_of_lessons(), 1);
         }
 
         #[test]
@@ -280,13 +264,13 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let nonexistent_chapter = create_test_chapter("Nonexistent", 99);
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.delete_chapter(&nonexistent_chapter).unwrap();
+            course.delete_chapter(&nonexistent_chapter).unwrap();
 
-            assert_eq!(updated_course.chapter_quantity(), 2);
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 1");
-            assert_eq!(updated_course.chapters()[1].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapter_quantity(), 2);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 1");
+            assert_eq!(course.chapters()[1].name().as_str(), "Chapter 2");
         }
 
         #[test]
@@ -294,13 +278,13 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = create_test_chapter("Chapter 2", 1);
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapter_quantity(), 1);
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Chapter 2");
-            assert_eq!(updated_course.chapters()[0].index().value(), 0);
+            assert_eq!(course.chapter_quantity(), 1);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 2");
+            assert_eq!(course.chapters()[0].index().value(), 0);
         }
 
         #[test]
@@ -315,18 +299,13 @@ mod tests {
             let chapter1 = create_test_chapter("Chapter 1", 0);
             let chapter2 = Chapter::new("Special Chapter".to_string(), 1, vec![lesson1]).unwrap();
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.chapters()[0].name().as_str(), "Special Chapter");
-            assert_eq!(updated_course.chapters()[0].lesson_quantity(), 1);
-            assert_eq!(
-                updated_course.chapters()[0]
-                    .total_duration()
-                    .total_seconds(),
-                3600
-            );
+            assert_eq!(course.chapters()[0].name().as_str(), "Special Chapter");
+            assert_eq!(course.chapters()[0].lesson_quantity(), 1);
+            assert_eq!(course.chapters()[0].total_duration().total_seconds(), 3600);
         }
 
         #[test]
@@ -336,16 +315,14 @@ mod tests {
             let chapter3 = create_test_chapter("Chapter 3", 2);
             let chapter1_to_delete = chapter1.clone();
             let chapter2_to_delete = chapter2.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
-            let course_after_first = course.delete_chapter(&chapter1_to_delete).unwrap();
-            let course_after_second = course_after_first
-                .delete_chapter(&chapter2_to_delete)
-                .unwrap();
+            course.delete_chapter(&chapter1_to_delete).unwrap();
+            course.delete_chapter(&chapter2_to_delete).unwrap();
 
-            assert_eq!(course_after_second.chapter_quantity(), 1);
-            assert_eq!(course_after_second.chapters()[0].name().as_str(), "Chapter 3");
-            assert_eq!(course_after_second.chapters()[0].index().value(), 0);
+            assert_eq!(course.chapter_quantity(), 1);
+            assert_eq!(course.chapters()[0].name().as_str(), "Chapter 3");
+            assert_eq!(course.chapters()[0].index().value(), 0);
         }
 
         #[test]
@@ -356,14 +333,14 @@ mod tests {
             let chapter1 = Chapter::new("Chapter 1".to_string(), 0, vec![lesson1]).unwrap();
             let chapter2 = Chapter::new("Chapter 2".to_string(), 1, vec![lesson2]).unwrap();
             let chapter3 = Chapter::new("Chapter 3".to_string(), 2, vec![lesson3]).unwrap();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2, chapter3]);
 
             assert_eq!(course.duration().total_seconds(), 6000);
 
-            let chapter2_ref = &course.chapters()[1].clone();
-            let updated_course = course.delete_chapter(chapter2_ref).unwrap();
+            let chapter2_ref = course.chapters()[1].clone();
+            course.delete_chapter(&chapter2_ref).unwrap();
 
-            assert_eq!(updated_course.duration().total_seconds(), 4000);
+            assert_eq!(course.duration().total_seconds(), 4000);
         }
 
         #[test]
@@ -380,13 +357,13 @@ mod tests {
             let chapter1 = Chapter::new("Chapter 1".to_string(), 0, lessons1).unwrap();
             let chapter2 = Chapter::new("Chapter 2".to_string(), 1, lessons2).unwrap();
             let chapter_to_delete = chapter1.clone();
-            let course = create_test_course("Test Course", vec![chapter1, chapter2]);
+            let mut course = create_test_course("Test Course", vec![chapter1, chapter2]);
 
             assert_eq!(course.number_of_lessons(), 5);
 
-            let updated_course = course.delete_chapter(&chapter_to_delete).unwrap();
+            course.delete_chapter(&chapter_to_delete).unwrap();
 
-            assert_eq!(updated_course.number_of_lessons(), 2);
+            assert_eq!(course.number_of_lessons(), 2);
         }
     }
 }
