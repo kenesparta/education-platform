@@ -513,4 +513,132 @@ mod tests {
             assert_eq!(synced.selected_lesson().lesson_name().as_str(), "Lesson 2");
         }
     }
+
+    mod observer_pattern {
+        use super::*;
+        use std::sync::Mutex;
+
+        #[test]
+        fn test_event_dispatcher_receives_course_ended_event() {
+            let lesson = create_test_lesson("Intro", 1800, 0);
+            let chapter = create_test_chapter("Chapter 1", 0, vec![lesson]);
+            let course = create_test_course("Test Course", vec![chapter]);
+
+            let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
+            let received_events = Arc::new(Mutex::new(Vec::new()));
+
+            let events_clone = Arc::clone(&received_events);
+            dispatcher.subscribe(move |event: &CourseEnded| {
+                events_clone.lock().unwrap().push(event.clone());
+            });
+
+            let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
+            let progress = service
+                .new_progress("student@example.com".to_string())
+                .unwrap();
+
+            let started = progress.start_selected_lesson();
+            let completed = started.end_selected_lesson().unwrap();
+            completed.publish_ended();
+
+            let events = received_events.lock().unwrap();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].user_email().address(), "student@example.com");
+            assert_eq!(events[0].course_id(), completed.id());
+        }
+
+        #[test]
+        fn test_multiple_observers_receive_event() {
+            let lesson = create_test_lesson("Intro", 1800, 0);
+            let chapter = create_test_chapter("Chapter 1", 0, vec![lesson]);
+            let course = create_test_course("Test Course", vec![chapter]);
+
+            let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
+
+            let observer1_events = Arc::new(Mutex::new(Vec::new()));
+            let observer2_events = Arc::new(Mutex::new(Vec::new()));
+
+            let obs1_clone = Arc::clone(&observer1_events);
+            dispatcher.subscribe(move |event: &CourseEnded| {
+                obs1_clone.lock().unwrap().push(event.clone());
+            });
+
+            let obs2_clone = Arc::clone(&observer2_events);
+            dispatcher.subscribe(move |event: &CourseEnded| {
+                obs2_clone.lock().unwrap().push(event.clone());
+            });
+
+            let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
+            let progress = service
+                .new_progress("user@example.com".to_string())
+                .unwrap();
+
+            let completed = progress
+                .start_selected_lesson()
+                .end_selected_lesson()
+                .unwrap();
+            completed.publish_ended();
+
+            assert_eq!(observer1_events.lock().unwrap().len(), 1);
+            assert_eq!(observer2_events.lock().unwrap().len(), 1);
+        }
+
+        #[test]
+        fn test_synced_progress_uses_same_dispatcher() {
+            let lesson = create_test_lesson("Intro", 1800, 0);
+            let chapter = create_test_chapter("Chapter 1", 0, vec![lesson]);
+            let course = create_test_course("Test Course", vec![chapter]);
+
+            let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
+            let received_events = Arc::new(Mutex::new(Vec::new()));
+
+            let events_clone = Arc::clone(&received_events);
+            dispatcher.subscribe(move |event: &CourseEnded| {
+                events_clone.lock().unwrap().push(event.clone());
+            });
+
+            let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
+            let original = service
+                .new_progress("user@example.com".to_string())
+                .unwrap();
+
+            let started = original.start_selected_lesson();
+            let synced = service.sync_with(&started).unwrap();
+
+            let completed = synced.end_selected_lesson().unwrap();
+            completed.publish_ended();
+
+            let events = received_events.lock().unwrap();
+            assert_eq!(events.len(), 1);
+        }
+
+        #[test]
+        fn test_no_event_published_without_explicit_call() {
+            let lesson = create_test_lesson("Intro", 1800, 0);
+            let chapter = create_test_chapter("Chapter 1", 0, vec![lesson]);
+            let course = create_test_course("Test Course", vec![chapter]);
+
+            let dispatcher = Arc::new(DomainEventDispatcher::<CourseEnded>::new());
+            let received_events = Arc::new(Mutex::new(Vec::new()));
+
+            let events_clone = Arc::clone(&received_events);
+            dispatcher.subscribe(move |event: &CourseEnded| {
+                events_clone.lock().unwrap().push(event.clone());
+            });
+
+            let service = CreateCourseProgress::with_dispatcher(course, Arc::clone(&dispatcher));
+            let progress = service
+                .new_progress("user@example.com".to_string())
+                .unwrap();
+
+            let _completed = progress
+                .start_selected_lesson()
+                .end_selected_lesson()
+                .unwrap();
+
+            // Event is NOT published automatically - must be explicit
+            let events = received_events.lock().unwrap();
+            assert_eq!(events.len(), 0);
+        }
+    }
 }
